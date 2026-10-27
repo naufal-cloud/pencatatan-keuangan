@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website Pencatatan & Rekonsiliasi Keuangan v1.0</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- React 18 & Babel CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Print Stylesheet for Report Printing */
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background-color: #ffffff !important; color: #000000 !important; }
+            .shadow-lg, .shadow-md, .shadow-sm, .shadow { box-shadow: none !important; }
+            .border { border-color: #cbd5e1 !important; }
+            .bg-slate-900, .bg-indigo-900 { background-color: #1e293b !important; color: #ffffff !important; }
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // Mock Initial Data for First Run
+        const INITIAL_TRANSACTIONS = [
+            { id: 'TRX-20261001-001', date: '2026-10-01', type: 'PEMASUKAN', fundType: 'UMUM', category: 'Iuran Member', amount: 15000000, description: 'Penerimaan Iuran Bulanan Anggota Oktober 2026', proofUrl: 'https://drive.google.com/file/d/sample-iuran/view', createdBy: 'Bendum', createdAt: '2026-10-01 09:00:00', syncStatus: 'SYNCED' },
+            { id: 'TRX-20261005-002', date: '2026-10-05', type: 'PEMASUKAN', fundType: 'HIBAH', category: 'Dana Hibah Program', amount: 50000000, description: 'Pencairan Tahap 1 Dana Hibah Pemberdayaan Masyarakat', proofUrl: 'https://drive.google.com/file/d/sample-hibah-doc/view', createdBy: 'Bendum', createdAt: '2026-10-05 10:30:00', syncStatus: 'SYNCED' },
+            { id: 'TRX-20261008-003', date: '2026-10-08', type: 'PENGELUARAN', fundType: 'UMUM', category: 'Operasional & Admin', amount: 3500000, description: 'Pembayaran Listrik, Wifi, & Sewa Sekretariat', proofUrl: 'https://drive.google.com/file/d/sample-nota1/view', createdBy: 'Bendum', createdAt: '2026-10-08 14:15:00', syncStatus: 'SYNCED' },
+            { id: 'TRX-20261012-004', date: '2026-10-12', type: 'PENGELUARAN', fundType: 'HIBAH', category: 'Kegiatan Program Hibah', amount: 12500000, description: 'Pelatihan Kewirausahaan Tahap 1 (Sewa venue & honor pemateri)', proofUrl: 'https://drive.google.com/file/d/sample-nota2/view', createdBy: 'Bendum', createdAt: '2026-10-12 11:20:00', syncStatus: 'SYNCED' },
+            { id: 'TRX-20261015-005', date: '2026-10-15', type: 'PEMASUKAN', fundType: 'UMUM', category: 'Donasi Publik', amount: 4500000, description: 'Donasi Publik Terikat Kegiatan Sosial', proofUrl: '', createdBy: 'Bendum', createdAt: '2026-10-15 16:45:00', syncStatus: 'SYNCED' },
+            { id: 'TRX-20261018-006', date: '2026-10-18', type: 'PENGELUARAN', fundType: 'HIBAH', category: 'Perlengkapan & Aset', amount: 18500000, description: 'Pembelian Laptop Proyek & Printer Lapangan Hibah', proofUrl: 'https://drive.google.com/file/d/sample-nota3/view', createdBy: 'Bendum', createdAt: '2026-10-18 13:00:00', syncStatus: 'SYNCED' },
+            { id: 'TRX-20261022-007', date: '2026-10-22', type: 'PENGELUARAN', fundType: 'UMUM', category: 'Konsumsi & Acara', amount: 1200000, description: 'Konsumsi Rapat Evaluasi Pengurus Triwulan III', proofUrl: '', createdBy: 'Bendum', createdAt: '2026-10-22 17:10:00', syncStatus: 'SYNCED' },
+            { id: 'TRX-20261025-008', date: '2026-10-25', type: 'PENGELUARAN', fundType: 'HIBAH', category: 'Transportasi & Perjalanan', amount: 4800000, description: 'BBM & Transportasi Lapangan Monitoring Proyek Hibah', proofUrl: '', createdBy: 'Bendum', createdAt: '2026-10-25 09:30:00', syncStatus: 'PENDING' }
+        ];
+
+        const INITIAL_CATEGORIES = {
+            PEMASUKAN: ['Iuran Member', 'Donasi Publik', 'Dana Hibah Program', 'Hasil Kegiatan Usaha', 'Bunga Bank / Lainnya'],
+            PENGELUARAN: ['Operasional & Admin', 'Perlengkapan & Aset', 'Konsumsi & Acara', 'Transportasi & Perjalanan', 'Kegiatan Program Hibah', 'Lain-lain']
+        };
+
+        const INITIAL_HIBAH_ALLOCATION = {
+            programName: 'Hibah Pemberdayaan Komunitas 2026',
+            totalAllocation: 50000000,
+            startDate: '2026-01-01',
+            endDate: '2026-12-31',
+            donorName: 'Yayasan Donor Utama Indonesia',
+            notes: 'Petty cash dan alokasi khusus program pelatihan serta aset operasional hibah.'
+        };
+
+        const INITIAL_GSHEETS_CONFIG = {
+            spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit',
+            sheetName: 'Laporan_Keuangan_2026',
+            lastSynced: '2026-10-27 18:00:00',
+            status: 'Tersinkronisasi',
+            autoSyncEnabled: true
+        };
+
+        const INITIAL_LOGS = [
+            { id: 'LOG-1001', timestamp: '2026-10-01 09:00:00', userRole: 'Bendahara Umum', action: 'TAMBAH_TRANSAKSI', details: 'Membuat transaksi TRX-20261001-001 (Pemasukan Rp 15.000.000 - Dana Umum)' },
+            { id: 'LOG-1002', timestamp: '2026-10-05 10:30:00', userRole: 'Bendahara Umum', action: 'TAMBAH_TRANSAKSI', details: 'Membuat transaksi TRX-20261005-002 (Pemasukan Rp 50.000.000 - Dana Hibah)' },
+            { id: 'LOG-1003', timestamp: '2026-10-27 18:00:00', userRole: 'System', action: 'SINKRONISASI_GSHEETS', details: 'Sinkronisasi otomatis ke Google Sheets berhasil (8 Transaksi)' }
+        ];
+
+        // Format Helper
+        const formatRp = (amount) => {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount || 0);
+        };
+
+        function App() {
+            // Persistent State (LocalStorage)
+            const [transactions, setTransactions] = useState(() => {
+                const saved = localStorage.getItem('rekonsiliasi_trx_v1');
+                return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
+            });
+
+            const [categories, setCategories] = useState(() => {
+                const saved = localStorage.getItem('rekonsiliasi_cat_v1');
+                return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
+            });
+
+            const [hibahAllocation, setHibahAllocation] = useState(() => {
+                const saved = localStorage.getItem('rekonsiliasi_hibah_v1');
+                return saved ? JSON.parse(saved) : INITIAL_HIBAH_ALLOCATION;
+            });
+
+            const [gsheetsConfig, setGsheetsConfig] = useState(() => {
+                const saved = localStorage.getItem('rekonsiliasi_gsheets_v1');
+                return saved ? JSON.parse(saved) : INITIAL_GSHEETS_CONFIG;
+            });
+
+            const [auditLogs, setAuditLogs] = useState(() => {
+                const saved = localStorage.getItem('rekonsiliasi_logs_v1');
+                return saved ? JSON.parse(saved) : INITIAL_LOGS;
+            });
+
+            // UI State
+            const [currentRole, setCurrentRole] = useState('BENDUM'); // 'BENDUM' | 'PENGURUS' | 'ADMIN'
+            const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'transactions' | 'hibah' | 'reconciliation' | 'categories' | 'logs'
+            const [selectedFundTab, setSelectedFundTab] = useState('ALL'); // 'ALL' | 'UMUM' | 'HIBAH'
+            const [periodFilter, setPeriodFilter] = useState('ALL'); // 'ALL' | 'THIS_MONTH' | 'THIS_YEAR'
+            const [searchTerm, setSearchTerm] = useState('');
+            const [categoryFilter, setCategoryFilter] = useState('ALL');
+
+            // Modal States
+            const [isTrxModalOpen, setIsTrxModalOpen] = useState(false);
+            const [editingTrx, setEditingTrx] = useState(null);
+            const [isHibahModalOpen, setIsHibahModalOpen] = useState(false);
+            const [isSyncing, setIsSyncing] = useState(false);
+            const [toastMessage, setToastMessage] = useState(null);
+
+            // Transaction Form State
+            const [trxForm, setTrxForm] = useState({
+                date: new Date().toISOString().split('T')[0],
+                type: 'PENGELUARAN',
+                fundType: 'UMUM',
+                category: '',
+                amount: '',
+                description: '',
+                proofUrl: ''
+            });
+
+            // Save state to LocalStorage
+            useEffect(() => {
+                localStorage.setItem('rekonsiliasi_trx_v1', JSON.stringify(transactions));
+            }, [transactions]);
+
+            useEffect(() => {
+                localStorage.setItem('rekonsiliasi_cat_v1', JSON.stringify(categories));
+            }, [categories]);
+
+            useEffect(() => {
+                localStorage.setItem('rekonsiliasi_hibah_v1', JSON.stringify(hibahAllocation));
+            }, [hibahAllocation]);
+
+            useEffect(() => {
+                localStorage.setItem('rekonsiliasi_gsheets_v1', JSON.stringify(gsheetsConfig));
+            }, [gsheetsConfig]);
+
+            useEffect(() => {
+                localStorage.setItem('rekonsiliasi_logs_v1', JSON.stringify(auditLogs));
+            }, [auditLogs]);
+
+            // Toast helper
+            const showToast = (msg, type = 'success') => {
+                setToastMessage({ text: msg, type });
+                setTimeout(() => setToastMessage(null), 4000);
+            };
+
+            // Logger Helper
+            const logAction = (action, details) => {
+                const roleNames = { BENDUM: 'Bendahara Umum', PENGURUS: 'Pengurus Lain', ADMIN: 'Administrator' };
+                const newLog = {
+                    id: `LOG-${Date.now().toString().slice(-4)}`,
+                    timestamp: new Date().toLocaleString('sv-SE').replace('T', ' '),
+                    userRole: roleNames[currentRole] || currentRole,
+                    action,
+                    details
+                };
+                setAuditLogs(prev => [newLog, ...prev]);
+            };
+
+            // Calculated Financial Summaries (Section 3.5 & 11.2)
+            const filteredTransactions = useMemo(() => {
+                return transactions.filter(t => {
+                    // Fund tab filter
+                    if (selectedFundTab !== 'ALL' && t.fundType !== selectedFundTab) return false;
+                    
+                    // Role check: Pengurus cannot view HIBAH transactions directly in list unless allowed
+                    if (currentRole === 'PENGURUS' && t.fundType === 'HIBAH') return false;
+
+                    // Search term filter
+                    if (searchTerm) {
+                        const term = searchTerm.toLowerCase();
+                        const matchId = t.id.toLowerCase().includes(term);
+                        const matchDesc = t.description.toLowerCase().includes(term);
+                        const matchCat = t.category.toLowerCase().includes(term);
+                        if (!matchId && !matchDesc && !matchCat) return false;
+                    }
+
+                    // Category Filter
+                    if (categoryFilter !== 'ALL' && t.category !== categoryFilter) return false;
+
+                    // Period Filter
+                    if (periodFilter === 'THIS_MONTH') {
+                        const now = new Date();
+                        const trxDate = new Date(t.date);
+                        if (trxDate.getMonth() !== now.getMonth() || trxDate.getFullYear() !== now.getFullYear()) return false;
+                    } else if (periodFilter === 'THIS_YEAR') {
+                        const now = new Date();
+                        const trxDate = new Date(t.date);
+                        if (trxDate.getFullYear() !== now.getFullYear()) return false;
+                    }
+
+                    return true;
+                });
+            }, [transactions, selectedFundTab, currentRole, searchTerm, categoryFilter, periodFilter]);
+
+            // Metrics calculation
+            const metrics = useMemo(() => {
+                let umumIncome = 0;
+                let umumExpense = 0;
+                let hibahIncome = 0;
+                let hibahExpense = 0;
+
+                transactions.forEach(t => {
+                    const amt = Number(t.amount) || 0;
+                    if (t.fundType === 'UMUM') {
+                        if (t.type === 'PEMASUKAN') umumIncome += amt;
+                        else umumExpense += amt;
+                    } else if (t.fundType === 'HIBAH') {
+                        if (t.type === 'PEMASUKAN') hibahIncome += amt;
+                        else hibahExpense += amt;
+                    }
+                });
+
+                const umumBalance = umumIncome - umumExpense;
+                const hibahBalance = hibahIncome - hibahExpense;
+
+                // Consolidated rules (Section 3.3 & 11.2): Hibah expenses are tracked, total consolidated avoids double counting.
+                const totalIncomeConsolidated = umumIncome + hibahIncome;
+                const totalExpenseConsolidated = umumExpense + hibahExpense;
+                const totalBalanceConsolidated = totalIncomeConsolidated - totalExpenseConsolidated;
+
+                // Hibah Allocation Metrics
+                const totalAlokasiHibah = hibahAllocation.totalAllocation || 0;
+                const sisaAlokasiHibah = totalAlokasiHibah - hibahExpense;
+                const percentageHibahSpent = totalAlokasiHibah > 0 ? (hibahExpense / totalAlokasiHibah) * 100 : 0;
+                const isOverBudget = hibahExpense > totalAlokasiHibah;
+
+                return {
+                    umumIncome,
+                    umumExpense,
+                    umumBalance,
+                    hibahIncome,
+                    hibahExpense,
+                    hibahBalance,
+                    totalIncomeConsolidated,
+                    totalExpenseConsolidated,
+                    totalBalanceConsolidated,
+                    totalAlokasiHibah,
+                    sisaAlokasiHibah,
+                    percentageHibahSpent,
+                    isOverBudget
+                };
+            }, [transactions, hibahAllocation]);
+
+            // Handlers
+            const handleOpenAddModal = (fundType = 'UMUM') => {
+                if (currentRole === 'PENGURUS' && fundType === 'HIBAH') {
+                    showToast('Pengurus Lain tidak diperbolehkan mengelola Dana Hibah.', 'error');
+                    return;
+                }
+                setEditingTrx(null);
+                setTrxForm({
+                    date: new Date().toISOString().split('T')[0],
+                    type: 'PENGELUARAN',
+                    fundType: fundType,
+                    category: categories.PENGELUARAN[0] || '',
+                    amount: '',
+                    description: '',
+                    proofUrl: ''
+                });
+                setIsTrxModalOpen(true);
+            };
+
+            const handleOpenEditModal = (trx) => {
+                if (currentRole === 'PENGURUS') {
+                    showToast('Pengurus Lain tidak diperbolehkan mengubah transaksi.', 'error');
+                    return;
+                }
+                setEditingTrx(trx);
+                setTrxForm({
+                    date: trx.date,
+                    type: trx.type,
+                    fundType: trx.fundType,
+                    category: trx.category,
+                    amount: trx.amount,
+                    description: trx.description,
+                    proofUrl: trx.proofUrl || ''
+                });
+                setIsTrxModalOpen(true);
+            };
+
+            const handleSaveTrx = (e) => {
+                e.preventDefault();
+                if (!trxForm.amount || Number(trxForm.amount) <= 0) {
+                    showToast('Nominal transaksi harus lebih besar dari 0!', 'error');
+                    return;
+                }
+                if (!trxForm.description.trim()) {
+                    showToast('Keterangan transaksi wajib diisi!', 'error');
+                    return;
+                }
+
+                if (editingTrx) {
+                    // Update Transaction
+                    const updated = transactions.map(t => {
+                        if (t.id === editingTrx.id) {
+                            return {
+                                ...t,
+                                date: trxForm.date,
+                                type: trxForm.type,
+                                fundType: trxForm.fundType,
+                                category: trxForm.category,
+                                amount: Number(trxForm.amount),
+                                description: trxForm.description,
+                                proofUrl: trxForm.proofUrl,
+                                updatedBy: currentRole,
+                                updatedAt: new Date().toLocaleString('sv-SE').replace('T', ' '),
+                                syncStatus: 'PENDING'
+                            };
+                        }
+                        return t;
+                    });
+                    setTransactions(updated);
+                    logAction('EDIT_TRANSAKSI', `Mengubah transaksi ${editingTrx.id} (Nominal: ${formatRp(trxForm.amount)})`);
+                    showToast(`Transaksi ${editingTrx.id} berhasil diperbarui.`);
+                } else {
+                    // New Transaction
+                    const dateStr = trxForm.date.replace(/-/g, '');
+                    const randomNum = Math.floor(100 + Math.random() * 900);
+                    const newId = `TRX-${dateStr}-${randomNum}`;
+                    
+                    const newTrx = {
+                        id: newId,
+                        date: trxForm.date,
+                        type: trxForm.type,
+                        fundType: trxForm.fundType,
+                        category: trxForm.category || (trxForm.type === 'PEMASUKAN' ? categories.PEMASUKAN[0] : categories.PENGELUARAN[0]),
+                        amount: Number(trxForm.amount),
+                        description: trxForm.description,
+                        proofUrl: trxForm.proofUrl,
+                        createdBy: currentRole,
+                        createdAt: new Date().toLocaleString('sv-SE').replace('T', ' '),
+                        syncStatus: 'PENDING'
+                    };
+                    setTransactions([newTrx, ...transactions]);
+                    logAction('TAMBAH_TRANSAKSI', `Membuat transaksi baru ${newId} (${trxForm.type} ${formatRp(trxForm.amount)} - ${trxForm.fundType})`);
+                    showToast(`Transaksi ${newId} berhasil ditambahkan!`);
+
+                    // Check budget warning for hibah
+                    if (trxForm.fundType === 'HIBAH' && trxForm.type === 'PENGELUARAN') {
+                        const newTotalHibahExp = metrics.hibahExpense + Number(trxForm.amount);
+                        if (newTotalHibahExp > hibahAllocation.totalAllocation) {
+                            showToast(`PERINGATAN: Total pengeluaran Dana Hibah telah melebihi alokasi! (${formatRp(newTotalHibahExp)} / ${formatRp(hibahAllocation.totalAllocation)})`, 'error');
+                        }
+                    }
+                }
+                setIsTrxModalOpen(false);
+            };
+
+            const handleDeleteTrx = (id) => {
+                if (currentRole !== 'BENDUM' && currentRole !== 'ADMIN') {
+                    showToast('Hanya Bendahara Umum atau Administrator yang dapat menghapus transaksi.', 'error');
+                    return;
+                }
+                if (confirm(`Apakah Anda yakin ingin menghapus transaksi ${id}? Tindakan ini akan dicatat dalam Log Audit.`)) {
+                    const target = transactions.find(t => t.id === id);
+                    setTransactions(transactions.filter(t => t.id !== id));
+                    logAction('HAPUS_TRANSAKSI', `Menghapus transaksi ${id} (${target?.description || ''} - ${formatRp(target?.amount)})`);
+                    showToast(`Transaksi ${id} telah dihapus.`);
+                }
+            };
+
+            const handleManualSyncGSheets = () => {
+                setIsSyncing(true);
+                setTimeout(() => {
+                    const now = new Date().toLocaleString('sv-SE').replace('T', ' ');
+                    setTransactions(transactions.map(t => ({ ...t, syncStatus: 'SYNCED' })));
+                    setGsheetsConfig(prev => ({ ...prev, lastSynced: now, status: 'Tersinkronisasi' }));
+                    setIsSyncing(false);
+                    logAction('SINKRONISASI_GSHEETS', `Manual Sinkronisasi Google Sheets selesai (${transactions.length} transaksi)`);
+                    showToast('Sinkronisasi data ke Google Sheets berhasil dipermbarui!');
+                }, 1500);
+            };
+
+            const handleExportCSV = () => {
+                const headers = ['ID Transaksi', 'Tanggal', 'Jenis Transaksi', 'Jenis Dana', 'Kategori', 'Nominal (Rp)', 'Keterangan', 'Dibuat Oleh', 'Waktu Dibuat', 'Status Sync'];
+                const rows = filteredTransactions.map(t => [
+                    t.id,
+                    t.date,
+                    t.type,
+                    t.fundType,
+                    `"${t.category}"`,
+                    t.amount,
+                    `"${t.description.replace(/"/g, '""')}"`,
+                    t.createdBy,
+                    t.createdAt,
+                    t.syncStatus
+                ]);
+
+                const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement('a');
+                link.setAttribute('href', encodedUri);
+                link.setAttribute('download', `Laporan_Keuangan_${selectedFundTab}_${new Date().toISOString().split('T')[0]}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                logAction('EKSPOR_LAPORAN', `Mengekspor laporan CSV (${filteredTransactions.length} baris)`);
+                showToast('Laporan CSV berhasil diunduh!');
+            };
+
+            const handleAddCategory = (type, newCat) => {
+                if (!newCat.trim()) return;
+                if (categories[type].includes(newCat.trim())) {
+                    showToast('Kategori sudah ada.', 'error');
+                    return;
+                }
+                setCategories(prev => ({ ...prev, [type]: [...prev[type], newCat.trim()] }));
+                logAction('KELOLA_KATEGORI', `Menambahkan kategori ${type}: "${newCat.trim()}"`);
+                showToast(`Kategori ${newCat} ditambahkan.`);
+            };
+
+            const handleDeleteCategory = (type, catName) => {
+                if (categories[type].length <= 1) {
+                    showToast('Minimal menyisakan 1 kategori!', 'error');
+                    return;
+                }
+                setCategories(prev => ({ ...prev, [type]: prev[type].filter(c => c !== catName) }));
+                logAction('KELOLA_KATEGORI', `Menghapus kategori ${type}: "${catName}"`);
+                showToast(`Kategori ${catName} dihapus.`);
+            };
+
+            const handleResetData = () => {
+                if (confirm('Apakah Anda yakin ingin mengembalikan seluruh data ke kondisi awal (Initial Mock)?')) {
+                    localStorage.clear();
+                    setTransactions(INITIAL_TRANSACTIONS);
+                    setCategories(INITIAL_CATEGORIES);
+                    setHibahAllocation(INITIAL_HIBAH_ALLOCATION);
+                    setGsheetsConfig(INITIAL_GSHEETS_CONFIG);
+                    setAuditLogs(INITIAL_LOGS);
+                    showToast('Seluruh data berhasil di-reset!');
+                }
+            };
+
+            return (
+                <div class="min-h-screen flex flex-col">
+                    {/* Top Navigation Bar */}
+                    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-30 no-print">
+                        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div class="flex items-center justify-between h-16">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-xl text-white shadow">
+                                        <i class="fa-solid fa-scale-balanced"></i>
+                                    </div>
+                                    <div>
+                                        <h1 class="font-bold text-lg tracking-wide leading-tight">Website Keuangan & Rekonsiliasi</h1>
+                                        <p class="text-xs text-slate-400">Pengelolaan Dana Umum & Dana Hibah v1.0</p>
+                                    </div>
+                                </div>
+
+                                {/* User Role Switcher (Section 2 & 11.6) */}
+                                <div class="flex items-center space-x-3 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
+                                    <span class="text-xs text-slate-400 font-medium hidden sm:inline"><i class="fa-solid fa-user-shield mr-1"></i> Peran Aktif:</span>
+                                    <div class="flex bg-slate-900 rounded-lg p-0.5 text-xs font-semibold">
+                                        <button 
+                                            onClick={() => { setCurrentRole('BENDUM'); showToast('Beralih ke hak akses Bendahara Umum (Akses Penuh)'); }}
+                                            class={`px-3 py-1.5 rounded-md transition ${currentRole === 'BENDUM' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
+                                            Bendum
+                                        </button>
+                                        <button 
+                                            onClick={() => { 
+                                                setCurrentRole('PENGURUS'); 
+                                                if (activeTab === 'hibah' || activeTab === 'logs') setActiveTab('dashboard');
+                                                showToast('Beralih ke hak akses Pengurus Lain (Terbatas Dana Umum)', 'error'); 
+                                            }}
+                                            class={`px-3 py-1.5 rounded-md transition ${currentRole === 'PENGURUS' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
+                                            Pengurus
+                                        </button>
+                                        <button 
+                                            onClick={() => { setCurrentRole('ADMIN'); showToast('Beralih ke hak akses Administrator'); }}
+                                            class={`px-3 py-1.5 rounded-md transition ${currentRole === 'ADMIN' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
+                                            Admin
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Navigation Tabs Bar */}
+                        <div class="bg-slate-800 border-t border-slate-700/60 px-4 sm:px-6 lg:px-8">
+                            <div class="max-w-7xl mx-auto flex space-x-1 overflow-x-auto custom-scrollbar text-sm font-medium">
+                                <button 
+                                    onClick={() => setActiveTab('dashboard')}
+                                    class={`py-3 px-4 border-b-2 flex items-center space-x-2 whitespace-nowrap transition ${activeTab === 'dashboard' ? 'border-indigo-500 text-indigo-400 font-semibold' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>
+                                    <i class="fa-solid fa-chart-pie"></i>
+                                    <span>Dashboard Ringkasan</span>
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('transactions')}
+                                    class={`py-3 px-4 border-b-2 flex items-center space-x-2 whitespace-nowrap transition ${activeTab === 'transactions' ? 'border-indigo-500 text-indigo-400 font-semibold' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>
+                                    <i class="fa-solid fa-receipt"></i>
+                                    <span>Transaksi Keuangan</span>
+                                </button>
+                                
+                                {/* Dana Hibah Tab Gated for Bendum & Admin */}
+                                <button 
+                                    onClick={() => {
+                                        if (currentRole === 'PENGURUS') {
+                                            showToast('Akses Dana Hibah hanya untuk Bendahara Umum.', 'error');
+                                            return;
+                                        }
+                                        setActiveTab('hibah');
+                                    }}
+                                    class={`py-3 px-4 border-b-2 flex items-center space-x-2 whitespace-nowrap transition ${activeTab === 'hibah' ? 'border-indigo-500 text-indigo-400 font-semibold' : 'border-transparent text-slate-400 hover:text-slate-200'} ${currentRole === 'PENGURUS' ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                    <i class="fa-solid fa-hand-holding-dollar"></i>
+                                    <span>Modul Dana Hibah & Petty Cash</span>
+                                    {currentRole === 'PENGURUS' && <i class="fa-solid fa-lock text-xs text-amber-400 ml-1" title="Terkunci untuk Pengurus"></i>}
+                                </button>
+
+                                <button 
+                                    onClick={() => setActiveTab('reconciliation')}
+                                    class={`py-3 px-4 border-b-2 flex items-center space-x-2 whitespace-nowrap transition ${activeTab === 'reconciliation' ? 'border-indigo-500 text-indigo-400 font-semibold' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>
+                                    <i class="fa-solid fa-file-excel"></i>
+                                    <span>Integrasi & Rekonsiliasi GSheets</span>
+                                </button>
+
+                                <button 
+                                    onClick={() => setActiveTab('categories')}
+                                    class={`py-3 px-4 border-b-2 flex items-center space-x-2 whitespace-nowrap transition ${activeTab === 'categories' ? 'border-indigo-500 text-indigo-400 font-semibold' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>
+                                    <i class="fa-solid fa-tags"></i>
+                                    <span>Kelola Kategori</span>
+                                </button>
+
+                                <button 
+                                    onClick={() => setActiveTab('logs')}
+                                    class={`py-3 px-4 border-b-2 flex items-center space-x-2 whitespace-nowrap transition ${activeTab === 'logs' ? 'border-indigo-500 text-indigo-400 font-semibold' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>
+                                    <i class="fa-solid fa-clock-rotate-left"></i>
+                                    <span>Audit Logs</span>
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Toast Notification Alert Banner */}
+                    {toastMessage && (
+                        <div class="fixed top-20 right-4 z-50 max-w-md animate-bounce">
+                            <div class={`px-4 py-3 rounded-xl shadow-2xl flex items-start space-x-3 text-sm font-medium text-white ${toastMessage.type === 'error' ? 'bg-rose-600' : 'bg-emerald-600'}`}>
+                                <i class={`mt-0.5 text-lg ${toastMessage.type === 'error' ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-circle-check'}`}></i>
+                                <div class="flex-1">{toastMessage.text}</div>
+                                <button onClick={() => setToastMessage(null)} class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Main Content Viewport */}
+                    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+                        
+                        {/* Over Budget Alert Banner (Section 11.4) */}
+                        {metrics.isOverBudget && (
+                            <div class="bg-rose-50 border-l-4 border-rose-600 p-4 rounded-xl shadow-sm flex items-start space-x-3">
+                                <div class="p-2 bg-rose-100 text-rose-700 rounded-lg font-bold">
+                                    <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="font-bold text-rose-900 text-base">Peringatan Over-Budget Dana Hibah!</h3>
+                                    <p class="text-sm text-rose-700 mt-0.5">
+                                        Total pengeluaran Dana Hibah saat ini (<strong>{formatRp(metrics.hibahExpense)}</strong>) telah melebihi alokasi yang ditetapkan (<strong>{formatRp(metrics.totalAlokasiHibah)}</strong>) sebesar <strong class="underline">{formatRp(metrics.hibahExpense - metrics.totalAlokasiHibah)}</strong>. Harap lakukan penyesuaian alokasi atau koreksi transaksi.
+                                    </p>
+                                </div>
+                                {currentRole === 'BENDUM' && (
+                                    <button 
+                                        onClick={() => setIsHibahModalOpen(true)}
+                                        class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold shadow transition whitespace-nowrap">
+                                        Adjust Alokasi
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
+                        {/* DASHBOARD TAB VIEW */}
+                        {activeTab === 'dashboard' && (
+                            <div class="space-y-6">
+                                {/* Dashboard Controls & Period Filter */}
+                                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 no-print">
+                                    <div>
+                                        <h2 class="text-xl font-bold text-slate-800">Ringkasan Ikhtisar Keuangan</h2>
+                                        <p class="text-xs text-slate-500">Pemantauan real-time posisi kas Dana Umum dan Dana Hibah</p>
+                                    </div>
+                                    <div class="flex items-center space-x-3">
+                                        <span class="text-xs font-medium text-slate-500"><i class="fa-solid fa-filter"></i> Periode:</span>
+                                        <select 
+                                            value={periodFilter} 
+                                            onChange={(e) => setPeriodFilter(e.target.value)}
+                                            class="bg-slate-50 border border-slate-300 text-slate-700 text-xs rounded-xl focus:ring-indigo-500 focus:border-indigo-500 p-2.5 font-medium">
+                                            <option value="ALL">Semua Waktu</option>
+                                            <option value="THIS_MONTH">Bulan Ini (Oktober 2026)</option>
+                                            <option value="THIS_YEAR">Tahun Ini (2026)</option>
+                                        </select>
+                                        <button 
+                                            onClick={() => window.print()} 
+                                            class="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow transition">
+                                            <i class="fa-solid fa-print"></i>
+                                            <span>Cetak Laporan</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Financial Summary Cards (Section 3.5 & 11.2) */}
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                    
+                                    {/* CARD 1: DANA UMUM */}
+                                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between relative overflow-hidden">
+                                        <div class="absolute top-0 right-0 w-24 h-24 bg-indigo-50 rounded-bl-full -mr-4 -mt-4 pointer-events-none"></div>
+                                        <div>
+                                            <div class="flex items-center justify-between">
+                                                <span class="px-2.5 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg uppercase tracking-wider">Dana Umum</span>
+                                                <i class="fa-solid fa-wallet text-indigo-500 text-xl"></i>
+                                            </div>
+                                            <div class="mt-4">
+                                                <p class="text-xs text-slate-500 font-medium">Saldo Kas Dana Umum</p>
+                                                <h3 class="text-2xl font-extrabold text-slate-900 mt-1">{formatRp(metrics.umumBalance)}</h3>
+                                            </div>
+                                        </div>
+                                        <div class="mt-5 border-t border-slate-100 pt-3 grid grid-cols-2 gap-2 text-xs">
+                                            <div>
+                                                <span class="text-slate-400 block text-[11px]">Total Pemasukan</span>
+                                                <span class="font-bold text-emerald-600">{formatRp(metrics.umumIncome)}</span>
+                                            </div>
+                                            <div>
+                                                <span class="text-slate-400 block text-[11px]">Total Pengeluaran</span>
+                                                <span class="font-bold text-rose-600">{formatRp(metrics.umumExpense)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* CARD 2: DANA HIBAH */}
+                                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between relative overflow-hidden">
+                                        <div class="absolute top-0 right-0 w-24 h-24 bg-amber-50 rounded-bl-full -mr-4 -mt-4 pointer-events-none"></div>
+                                        <div>
+                                            <div class="flex items-center justify-between">
+                                                <span class="px-2.5 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-lg uppercase tracking-wider">Dana Hibah</span>
+                                                <i class="fa-solid fa-hand-holding-dollar text-amber-500 text-xl"></i>
+                                            </div>
+                                            <div class="mt-4">
+                                                <p class="text-xs text-slate-500 font-medium">Sisa Saldo Kas Hibah</p>
+                                                <h3 class="text-2xl font-extrabold text-slate-900 mt-1">{formatRp(metrics.hibahBalance)}</h3>
+                                            </div>
+                                        </div>
+                                        <div class="mt-5 border-t border-slate-100 pt-3 grid grid-cols-2 gap-2 text-xs">
+                                            <div>
+                                                <span class="text-slate-400 block text-[11px]">Pencairan Hibah</span>
+                                                <span class="font-bold text-emerald-600">{formatRp(metrics.hibahIncome)}</span>
+                                            </div>
+                                            <div>
+                                                <span class="text-slate-400 block text-[11px]">Pengeluaran Hibah</span>
+                                                <span class="font-bold text-rose-600">{formatRp(metrics.hibahExpense)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* CARD 3: KONSOLIDASI (GABUNGAN TANPA DOUBLE COUNTING) */}
+                                    <div class="bg-slate-900 text-white rounded-2xl shadow-lg border border-slate-800 p-5 flex flex-col justify-between relative overflow-hidden">
+                                        <div class="absolute top-0 right-0 w-24 h-24 bg-slate-800 rounded-bl-full -mr-4 -mt-4 pointer-events-none opacity-50"></div>
+                                        <div>
+                                            <div class="flex items-center justify-between">
+                                                <span class="px-2.5 py-1 bg-indigo-500/30 text-indigo-300 border border-indigo-400/30 text-xs font-bold rounded-lg uppercase tracking-wider">Laporan Konsolidasi</span>
+                                                <i class="fa-solid fa-chart-line text-indigo-400 text-xl"></i>
+                                            </div>
+                                            <div class="mt-4">
+                                                <p class="text-xs text-slate-400 font-medium">Total Kas Gabungan bersih</p>
+                                                <h3 class="text-2xl font-extrabold text-white mt-1">{formatRp(metrics.totalBalanceConsolidated)}</h3>
+                                            </div>
+                                        </div>
+                                        <div class="mt-5 border-t border-slate-800 pt-3 grid grid-cols-2 gap-2 text-xs">
+                                            <div>
+                                                <span class="text-slate-400 block text-[11px]">Total Masuk Gabungan</span>
+                                                <span class="font-bold text-emerald-400">{formatRp(metrics.totalIncomeConsolidated)}</span>
+                                            </div>
+                                            <div>
+                                                <span class="text-slate-400 block text-[11px]">Total Keluar Gabungan</span>
+                                                <span class="font-bold text-rose-400">{formatRp(metrics.totalExpenseConsolidated)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Petty Cash & Hibah Allocation Progress Section */}
+                                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+                                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                        <div>
+                                            <h3 class="font-bold text-slate-800 text-base flex items-center space-x-2">
+                                                <i class="fa-solid fa-bullseye text-amber-500"></i>
+                                                <span>Status Alokasi & Penggunaan Petty Cash Hibah</span>
+                                            </h3>
+                                            <p class="text-xs text-slate-500">{hibahAllocation.programName} ({hibahAllocation.startDate} s/d {hibahAllocation.endDate})</p>
+                                        </div>
+                                        {currentRole === 'BENDUM' && (
+                                            <button 
+                                                onClick={() => setIsHibahModalOpen(true)}
+                                                class="text-xs font-semibold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition border border-slate-300 self-start sm:self-auto">
+                                                <i class="fa-solid fa-pen-to-square mr-1"></i> Edit Alokasi Program
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Progress bar */}
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between text-xs font-semibold">
+                                            <span class="text-slate-600">Terpakai: {formatRp(metrics.hibahExpense)} dari {formatRp(metrics.totalAlokasiHibah)}</span>
+                                            <span class={metrics.isOverBudget ? 'text-rose-600 font-bold' : 'text-slate-700'}>
+                                                {metrics.percentageHibahSpent.toFixed(1)}% {metrics.isOverBudget ? '(MELEBIHI KAPASITAS)' : ''}
+                                            </span>
+                                        </div>
+                                        <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200">
+                                            <div 
+                                                class={`h-full rounded-full transition-all duration-500 ${metrics.isOverBudget ? 'bg-rose-600' : metrics.percentageHibahSpent > 80 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                                                style={{ width: `${Math.min(100, metrics.percentageHibahSpent)}%` }}>
+                                            </div>
+                                        </div>
+                                        <div class="flex justify-between text-[11px] text-slate-500 pt-1">
+                                            <span>Sisa Alokasi Anggaran: <strong>{formatRp(metrics.sisaAlokasiHibah)}</strong></span>
+                                            <span>Penyedia Hibah: {hibahAllocation.donorName}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Recent Activity Preview */}
+                                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <h3 class="font-bold text-slate-800 text-base">5 Transaksi Terakhir</h3>
+                                        <button onClick={() => setActiveTab('transactions')} class="text-xs font-semibold text-indigo-600 hover:text-indigo-800">Lihat Semua <i class="fa-solid fa-arrow-right ml-1"></i></button>
+                                    </div>
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full text-left text-xs text-slate-600">
+                                            <thead class="bg-slate-50 text-slate-700 font-semibold uppercase border-y border-slate-200">
+                                                <tr>
+                                                    <th class="py-3 px-3">ID Transaksi</th>
+                                                    <th class="py-3 px-3">Tanggal</th>
+                                                    <th class="py-3 px-3">Jenis Dana</th>
+                                                    <th class="py-3 px-3">Kategori</th>
+                                                    <th class="py-3 px-3">Keterangan</th>
+                                                    <th class="py-3 px-3 text-right">Nominal</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-slate-100">
+                                                {transactions.slice(0, 5).map(t => (
+                                                    <tr key={t.id} class="hover:bg-slate-50">
+                                                        <td class="py-3 px-3 font-mono font-medium text-slate-900">{t.id}</td>
+                                                        <td class="py-3 px-3 whitespace-nowrap">{t.date}</td>
+                                                        <td class="py-3 px-3">
+                                                            <span class={`px-2 py-0.5 rounded text-[10px] font-bold ${t.fundType === 'UMUM' ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-800'}`}>
+                                                                {t.fundType}
+                                                            </span>
+                                                        </td>
+                                                        <td class="py-3 px-3 font-medium">{t.category}</td>
+                                                        <td class="py-3 px-3 max-w-xs truncate">{t.description}</td>
+                                                        <td class={`py-3 px-3 text-right font-bold ${t.type === 'PEMASUKAN' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                            {t.type === 'PEMASUKAN' ? '+' : '-'} {formatRp(t.amount)}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TRANSACTIONS MANAGEMENT TAB VIEW */}
+                        {activeTab === 'transactions' && (
+                            <div class="space-y-6">
+                                {/* Header & Actions */}
+                                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                                    <div>
+                                        <h2 class="text-xl font-bold text-slate-800">Pencatatan Transaksi Keuangan</h2>
+                                        <p class="text-xs text-slate-500">Kelola dan telusuri transaksi Pemasukan dan Pengeluaran kas</p>
+                                    </div>
+
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <button 
+                                            onClick={() => handleOpenAddModal('UMUM')}
+                                            class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center space-x-2 shadow transition">
+                                            <i class="fa-solid fa-plus"></i>
+                                            <span>+ Transaksi Dana Umum</span>
+                                        </button>
+                                        
+                                        {currentRole !== 'PENGURUS' && (
+                                            <button 
+                                                onClick={() => handleOpenAddModal('HIBAH')}
+                                                class="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center space-x-2 shadow transition">
+                                                <i class="fa-solid fa-plus"></i>
+                                                <span>+ Transaksi Dana Hibah</span>
+                                            </button>
+                                        )}
+
+                                        <button 
+                                            onClick={handleExportCSV}
+                                            class="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition border border-slate-300">
+                                            <i class="fa-solid fa-file-csv text-emerald-600 text-base"></i>
+                                            <span>Ekspor CSV</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Filters Bar */}
+                                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-4 no-print">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                        
+                                        {/* Fund Type Nav Pill */}
+                                        <div>
+                                            <label class="block text-[11px] font-semibold text-slate-500 mb-1">Filter Jenis Dana</label>
+                                            <div class="flex bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+                                                <button 
+                                                    onClick={() => setSelectedFundTab('ALL')} 
+                                                    class={`flex-1 py-1.5 rounded-lg transition ${selectedFundTab === 'ALL' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}>
+                                                    Semua
+                                                </button>
+                                                <button 
+                                                    onClick={() => setSelectedFundTab('UMUM')} 
+                                                    class={`flex-1 py-1.5 rounded-lg transition ${selectedFundTab === 'UMUM' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500'}`}>
+                                                    Dana Umum
+                                                </button>
+                                                {currentRole !== 'PENGURUS' && (
+                                                    <button 
+                                                        onClick={() => setSelectedFundTab('HIBAH')} 
+                                                        class={`flex-1 py-1.5 rounded-lg transition ${selectedFundTab === 'HIBAH' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-500'}`}>
+                                                        Dana Hibah
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Search Box */}
+                                        <div>
+                                            <label class="block text-[11px] font-semibold text-slate-500 mb-1">Cari Transaksi / TRX ID</label>
+                                            <div class="relative">
+                                                <input 
+                                                    type="text" 
+                                                    value={searchTerm}
+                                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                                    placeholder="Ketik kata kunci..."
+                                                    class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-700 focus:ring-indigo-500 focus:border-indigo-500"
+                                                />
+                                                <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+                                            </div>
+                                        </div>
+
+                                        {/* Category Filter */}
+                                        <div>
+                                            <label class="block text-[11px] font-semibold text-slate-500 mb-1">Filter Kategori</label>
+                                            <select 
+                                                value={categoryFilter}
+                                                onChange={(e) => setCategoryFilter(e.target.value)}
+                                                class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-700 focus:ring-indigo-500 focus:border-indigo-500 font-medium">
+                                                <option value="ALL">Semua Kategori</option>
+                                                {[...categories.PEMASUKAN, ...categories.PENGELUARAN].map((cat, idx) => (
+                                                    <option key={idx} value={cat}>{cat}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Period Filter */}
+                                        <div>
+                                            <label class="block text-[11px] font-semibold text-slate-500 mb-1">Rentang Periode</label>
+                                            <select 
+                                                value={periodFilter}
+                                                onChange={(e) => setPeriodFilter(e.target.value)}
+                                                class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-700 focus:ring-indigo-500 focus:border-indigo-500 font-medium">
+                                                <option value="ALL">Semua Periode Data</option>
+                                                <option value="THIS_MONTH">Bulan Ini (Oktober 2026)</option>
+                                                <option value="THIS_YEAR">Tahun 2026</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Transactions Data Table */}
+                                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full text-left text-xs text-slate-600">
+                                            <thead class="bg-slate-50 text-slate-700 font-semibold uppercase border-b border-slate-200">
+                                                <tr>
+                                                    <th class="py-3.5 px-4">ID Transaksi</th>
+                                                    <th class="py-3.5 px-4">Tanggal</th>
+                                                    <th class="py-3.5 px-4">Jenis & Dana</th>
+                                                    <th class="py-3.5 px-4">Kategori</th>
+                                                    <th class="py-3.5 px-4">Keterangan Sumber/Tujuan</th>
+                                                    <th class="py-3.5 px-4 text-right">Nominal (Rp)</th>
+                                                    <th class="py-3.5 px-4 text-center">Bukti</th>
+                                                    <th class="py-3.5 px-4 text-center no-print">Aksi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-slate-100">
+                                                {filteredTransactions.length === 0 ? (
+                                                    <tr>
+                                                        <td colspan="8" class="text-center py-8 text-slate-400 font-medium">
+                                                            <i class="fa-solid fa-inbox text-3xl mb-2 block"></i>
+                                                            Tidak ada transaksi yang cocok dengan filter pencarian.
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    filteredTransactions.map(t => (
+                                                        <tr key={t.id} class="hover:bg-slate-50/80 transition">
+                                                            <td class="py-3.5 px-4 font-mono font-bold text-slate-900">
+                                                                {t.id}
+                                                                {t.updatedAt && <span class="block text-[9px] text-amber-600 font-normal" title={`Diedit pada ${t.updatedAt}`}><i class="fa-solid fa-pen-to-square"></i> Edited</span>}
+                                                            </td>
+                                                            <td class="py-3.5 px-4 whitespace-nowrap">{t.date}</td>
+                                                            <td class="py-3.5 px-4">
+                                                                <div class="flex flex-col space-y-1">
+                                                                    <span class={`w-max px-2 py-0.5 rounded text-[10px] font-bold ${t.type === 'PEMASUKAN' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                                                                        {t.type}
+                                                                    </span>
+                                                                    <span class={`w-max px-2 py-0.5 rounded text-[10px] font-semibold ${t.fundType === 'UMUM' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}`}>
+                                                                        {t.fundType === 'UMUM' ? 'Dana Umum' : 'Dana Hibah'}
+                                                                    </span>
+                                                                </div>
+                                                            </td>
+                                                            <td class="py-3.5 px-4 font-medium text-slate-800">{t.category}</td>
+                                                            <td class="py-3.5 px-4 max-w-xs">{t.description}</td>
+                                                            <td class={`py-3.5 px-4 text-right font-extrabold text-sm ${t.type === 'PEMASUKAN' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                                {t.type === 'PEMASUKAN' ? '+' : '-'} {formatRp(t.amount)}
+                                                            </td>
+                                                            <td class="py-3.5 px-4 text-center">
+                                                                {t.proofUrl ? (
+                                                                    <a href={t.proofUrl} target="_blank" rel="noreferrer" class="text-indigo-600 hover:text-indigo-800 font-bold flex items-center justify-center space-x-1" title="Lihat Bukti PDF/Drive">
+                                                                        <i class="fa-solid fa-paperclip"></i>
+                                                                        <span class="text-[10px]">Bukti</span>
+                                                                    </a>
+                                                                ) : (
+                                                                    <span class="text-slate-300">-</span>
+                                                                )}
+                                                            </td>
+                                                            <td class="py-3.5 px-4 text-center no-print">
+                                                                <div class="flex items-center justify-center space-x-2">
+                                                                    {currentRole !== 'PENGURUS' ? (
+                                                                        <>
+                                                                            <button 
+                                                                                onClick={() => handleOpenEditModal(t)}
+                                                                                class="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition" 
+                                                                                title="Edit Transaksi">
+                                                                                <i class="fa-solid fa-pen-to-square"></i>
+                                                                            </button>
+                                                                            <button 
+                                                                                onClick={() => handleDeleteTrx(t.id)}
+                                                                                class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition" 
+                                                                                title="Hapus Transaksi (Bendum Only)">
+                                                                                <i class="fa-solid fa-trash-can"></i>
+                                                                            </button>
+                                                                        </>
+                                                                    ) : (
+                                                                        <span class="text-[10px] text-slate-400 italic">No Edit</span>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex justify-between items-center">
+                                        <span>Menampilkan {filteredTransactions.length} dari total {transactions.length} transaksi</span>
+                                        <span class="font-medium">Total Nominal Terfilter: <strong class="text-slate-800">{formatRp(filteredTransactions.reduce((acc, curr) => acc + curr.amount, 0))}</strong></span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* DANA HIBAH & PETTY CASH MODULE TAB VIEW (Section 11.4) */}
+                        {activeTab === 'hibah' && (
+                            <div class="space-y-6">
+                                <div class="bg-gradient-to-r from-amber-600 to-amber-800 text-white p-6 rounded-2xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                    <div>
+                                        <span class="px-2.5 py-1 bg-amber-900/50 border border-amber-400/40 text-amber-200 text-xs font-bold rounded-lg uppercase tracking-wider">Modul Khusus Dana Hibah</span>
+                                        <h2 class="text-2xl font-extrabold mt-1">{hibahAllocation.programName}</h2>
+                                        <p class="text-xs text-amber-100 mt-1 max-w-xl">{hibahAllocation.notes}</p>
+                                    </div>
+                                    {currentRole === 'BENDUM' && (
+                                        <button 
+                                            onClick={() => setIsHibahModalOpen(true)}
+                                            class="px-4 py-2.5 bg-white text-amber-900 hover:bg-amber-50 rounded-xl text-xs font-bold shadow transition flex items-center space-x-2">
+                                            <i class="fa-solid fa-sliders"></i>
+                                            <span>Kelola Alokasi Anggaran</span>
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Summary Grid */}
+                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                        <span class="text-xs text-slate-500 font-medium">Total Alokasi Program</span>
+                                        <h4 class="text-xl font-bold text-slate-800 mt-1">{formatRp(metrics.totalAlokasiHibah)}</h4>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                        <span class="text-xs text-slate-500 font-medium">Total Hibah Dicairkan</span>
+                                        <h4 class="text-xl font-bold text-emerald-600 mt-1">{formatRp(metrics.hibahIncome)}</h4>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                        <span class="text-xs text-slate-500 font-medium">Pengeluaran Petty Cash Hibah</span>
+                                        <h4 class="text-xl font-bold text-rose-600 mt-1">{formatRp(metrics.hibahExpense)}</h4>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                        <span class="text-xs text-slate-500 font-medium">Sisa Alokasi Kas</span>
+                                        <h4 class={`text-xl font-bold mt-1 ${metrics.sisaAlokasiHibah < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>{formatRp(metrics.sisaAlokasiHibah)}</h4>
+                                    </div>
+                                </div>
+
+                                {/* Dedicated Hibah Transactions Table */}
+                                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <h3 class="font-bold text-slate-800 text-base">Rincian Pengeluaran Petty Cash & Dana Hibah</h3>
+                                        {currentRole === 'BENDUM' && (
+                                            <button 
+                                                onClick={() => handleOpenAddModal('HIBAH')}
+                                                class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold">
+                                                + Pengeluaran Hibah Baru
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full text-left text-xs text-slate-600">
+                                            <thead class="bg-amber-50 text-amber-900 font-semibold uppercase border-y border-amber-200">
+                                                <tr>
+                                                    <th class="py-3 px-3">TRX ID</th>
+                                                    <th class="py-3 px-3">Tanggal</th>
+                                                    <th class="py-3 px-3">Kategori</th>
+                                                    <th class="py-3 px-3">Rincian Penggunaan</th>
+                                                    <th class="py-3 px-3 text-right">Nominal Pengeluaran</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-slate-100">
+                                                {transactions.filter(t => t.fundType === 'HIBAH').map(t => (
+                                                    <tr key={t.id} class="hover:bg-slate-50">
+                                                        <td class="py-3 px-3 font-mono font-medium text-slate-900">{t.id}</td>
+                                                        <td class="py-3 px-3">{t.date}</td>
+                                                        <td class="py-3 px-3 font-medium">{t.category}</td>
+                                                        <td class="py-3 px-3">{t.description}</td>
+                                                        <td class={`py-3 px-3 text-right font-bold ${t.type === 'PEMASUKAN' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                            {formatRp(t.amount)}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* RECONCILIATION & GOOGLE SHEETS TAB VIEW (Section 3.6 & 11.1) */}
+                        {activeTab === 'reconciliation' && (
+                            <div class="space-y-6">
+                                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                        <div>
+                                            <h2 class="text-xl font-bold text-slate-800">Integrasi & Rekonsiliasi Google Sheets</h2>
+                                            <p class="text-xs text-slate-500">Pencocokan data antara Website LKG dan Google Sheets spreadsheet resmi Bendahara Umum</p>
+                                        </div>
+                                        <button 
+                                            onClick={handleManualSyncGSheets}
+                                            disabled={isSyncing}
+                                            class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow flex items-center space-x-2 transition disabled:opacity-50">
+                                            <i class={`fa-solid fa-arrows-rotate ${isSyncing ? 'animate-spin' : ''}`}></i>
+                                            <span>{isSyncing ? 'Menghubungkan & Menyinkronkan...' : 'Sinkronkan Sekarang'}</span>
+                                        </button>
+                                    </div>
+
+                                    {/* Sync Status Info Card */}
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-100 text-xs">
+                                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                            <span class="text-slate-400 block font-medium">Status Sinkronisasi</span>
+                                            <span class="font-bold text-emerald-600 flex items-center space-x-1.5 mt-0.5">
+                                                <i class="fa-solid fa-circle-check"></i>
+                                                <span>{gsheetsConfig.status}</span>
+                                            </span>
+                                        </div>
+                                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                            <span class="text-slate-400 block font-medium">Waktu Sinkronisasi Terakhir</span>
+                                            <span class="font-bold text-slate-700 mt-0.5 block">{gsheetsConfig.lastSynced}</span>
+                                        </div>
+                                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                            <span class="text-slate-400 block font-medium">Target Spreadsheet</span>
+                                            <a href={gsheetsConfig.spreadsheetUrl} target="_blank" rel="noreferrer" class="font-bold text-indigo-600 hover:underline truncate block mt-0.5">
+                                                {gsheetsConfig.sheetName} <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Reconciliation Matching Table */}
+                                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <h3 class="font-bold text-slate-800 text-base">Tabel Pencocokan Rekonsiliasi ID Transaksi</h3>
+                                            <p class="text-xs text-slate-500">Sistem membandingkan data ID Unik di Website dengan Google Sheets</p>
+                                        </div>
+                                        <span class="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-lg">Match Rate: 100% (All TRX Matched)</span>
+                                    </div>
+
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full text-left text-xs text-slate-600">
+                                            <thead class="bg-slate-50 text-slate-700 font-semibold uppercase border-y border-slate-200">
+                                                <tr>
+                                                    <th class="py-3 px-3">TRX ID Unik</th>
+                                                    <th class="py-3 px-3">Nominal Website</th>
+                                                    <th class="py-3 px-3">Nominal GSheets</th>
+                                                    <th class="py-3 px-3">Jenis Dana</th>
+                                                    <th class="py-3 px-3">Status Sinkronisasi</th>
+                                                    <th class="py-3 px-3 text-center">Hasil Cocok</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-slate-100">
+                                                {transactions.map(t => (
+                                                    <tr key={t.id} class="hover:bg-slate-50">
+                                                        <td class="py-3 px-3 font-mono font-bold text-slate-900">{t.id}</td>
+                                                        <td class="py-3 px-3 font-semibold text-slate-800">{formatRp(t.amount)}</td>
+                                                        <td class="py-3 px-3 font-semibold text-slate-800">{formatRp(t.amount)}</td>
+                                                        <td class="py-3 px-3">
+                                                            <span class={`px-2 py-0.5 rounded text-[10px] font-bold ${t.fundType === 'UMUM' ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-800'}`}>
+                                                                {t.fundType}
+                                                            </span>
+                                                        </td>
+                                                        <td class="py-3 px-3">
+                                                            <span class={`px-2 py-0.5 rounded text-[10px] font-bold ${t.syncStatus === 'SYNCED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}`}>
+                                                                {t.syncStatus}
+                                                            </span>
+                                                        </td>
+                                                        <td class="py-3 px-3 text-center">
+                                                            <span class="inline-flex items-center space-x-1 text-emerald-600 font-bold">
+                                                                <i class="fa-solid fa-circle-check"></i>
+                                                                <span>Cocok</span>
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* CATEGORY MANAGEMENT TAB VIEW (Section 3.4) */}
+                        {activeTab === 'categories' && (
+                            <div class="space-y-6">
+                                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                                    <h2 class="text-xl font-bold text-slate-800">Pengelolaan Kategori Transaksi</h2>
+                                    <p class="text-xs text-slate-500">Kelola master data kategori untuk Pemasukan dan Pengeluaran</p>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    
+                                    {/* Income Categories */}
+                                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                                        <h3 class="font-bold text-emerald-700 text-base flex items-center space-x-2">
+                                            <i class="fa-solid fa-circle-arrow-down"></i>
+                                            <span>Kategori Pemasukan</span>
+                                        </h3>
+                                        
+                                        {currentRole !== 'PENGURUS' && (
+                                            <form onSubmit={(e) => { e.preventDefault(); handleAddCategory('PEMASUKAN', e.target.newCat.value); e.target.newCat.value = ''; }} class="flex space-x-2">
+                                                <input type="text" name="newCat" placeholder="Tambah kategori pemasukan baru..." class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs" />
+                                                <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold">+ Tambah</button>
+                                            </form>
+                                        )}
+
+                                        <ul class="divide-y divide-slate-100">
+                                            {categories.PEMASUKAN.map((cat, i) => (
+                                                <li key={i} class="py-2.5 flex justify-between items-center text-xs font-medium text-slate-700">
+                                                    <span>{cat}</span>
+                                                    {currentRole === 'ADMIN' && (
+                                                        <button onClick={() => handleDeleteCategory('PEMASUKAN', cat)} class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash-can"></i></button>
+                                                    )}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+
+                                    {/* Expense Categories */}
+                                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                                        <h3 class="font-bold text-rose-700 text-base flex items-center space-x-2">
+                                            <i class="fa-solid fa-circle-arrow-up"></i>
+                                            <span>Kategori Pengeluaran</span>
+                                        </h3>
+
+                                        {currentRole !== 'PENGURUS' && (
+                                            <form onSubmit={(e) => { e.preventDefault(); handleAddCategory('PENGELUARAN', e.target.newCat.value); e.target.newCat.value = ''; }} class="flex space-x-2">
+                                                <input type="text" name="newCat" placeholder="Tambah kategori pengeluaran baru..." class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs" />
+                                                <button type="submit" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold">+ Tambah</button>
+                                            </form>
+                                        )}
+
+                                        <ul class="divide-y divide-slate-100">
+                                            {categories.PENGELUARAN.map((cat, i) => (
+                                                <li key={i} class="py-2.5 flex justify-between items-center text-xs font-medium text-slate-700">
+                                                    <span>{cat}</span>
+                                                    {currentRole === 'ADMIN' && (
+                                                        <button onClick={() => handleDeleteCategory('PENGELUARAN', cat)} class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash-can"></i></button>
+                                                    )}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+
+                                </div>
+                            </div>
+                        )}
+
+                        {/* AUDIT LOGS TAB VIEW (Section 3.1 & 11.3) */}
+                        {activeTab === 'logs' && (
+                            <div class="space-y-6">
+                                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center">
+                                    <div>
+                                        <h2 class="text-xl font-bold text-slate-800">Riwayat Audit & Aktivitas Log</h2>
+                                        <p class="text-xs text-slate-500">Catatan otomatis penambahan, perubahan, dan penghapusan transaksi oleh pengguna</p>
+                                    </div>
+                                    <button onClick={handleResetData} class="px-3 py-1.5 bg-rose-100 text-rose-700 hover:bg-rose-200 rounded-xl text-xs font-bold border border-rose-300">
+                                        Reset Master Data
+                                    </button>
+                                </div>
+
+                                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full text-left text-xs text-slate-600">
+                                            <thead class="bg-slate-50 text-slate-700 font-semibold uppercase border-b border-slate-200">
+                                                <tr>
+                                                    <th class="py-3 px-4">Log ID</th>
+                                                    <th class="py-3 px-4">Waktu</th>
+                                                    <th class="py-3 px-4">Pengguna / Peran</th>
+                                                    <th class="py-3 px-4">Jenis Aksi</th>
+                                                    <th class="py-3 px-4">Rincian Perubahan</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-slate-100">
+                                                {auditLogs.map(log => (
+                                                    <tr key={log.id} class="hover:bg-slate-50">
+                                                        <td class="py-3 px-4 font-mono font-medium text-slate-500">{log.id}</td>
+                                                        <td class="py-3 px-4 whitespace-nowrap">{log.timestamp}</td>
+                                                        <td class="py-3 px-4 font-bold text-slate-800">{log.userRole}</td>
+                                                        <td class="py-3 px-4">
+                                                            <span class={`px-2 py-0.5 rounded text-[10px] font-bold ${log.action.includes('HAPUS') ? 'bg-rose-100 text-rose-800' : log.action.includes('EDIT') ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                                                                {log.action}
+                                                            </span>
+                                                        </td>
+                                                        <td class="py-3 px-4">{log.details}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                    </main>
+
+                    {/* Footer */}
+                    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 mt-auto no-print">
+                        <div class="max-w-7xl mx-auto px-4">
+                            System Requirement v1.0 Compliant &bull; Website Pencatatan dan Rekonsiliasi Keuangan (Dana Umum & Dana Hibah) &bull; 2026
+                        </div>
+                    </footer>
+
+                    {/* MODAL FORM ADD / EDIT TRANSACTION */}
+                    {isTrxModalOpen && (
+                        <div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+                            <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200">
+                                <div class={`p-5 text-white flex items-center justify-between ${trxForm.fundType === 'UMUM' ? 'bg-indigo-600' : 'bg-amber-600'}`}>
+                                    <h3 class="font-bold text-base">
+                                        {editingTrx ? `Edit Transaksi (${editingTrx.id})` : `Tambah Transaksi Baru (${trxForm.fundType === 'UMUM' ? 'Dana Umum' : 'Dana Hibah'})`}
+                                    </h3>
+                                    <button onClick={() => setIsTrxModalOpen(false)} class="text-white/80 hover:text-white">
+                                        <i class="fa-solid fa-xmark text-xl"></i>
+                                    </button>
+                                </div>
+
+                                <form onSubmit={handleSaveTrx} class="p-6 space-y-4 text-xs">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block font-semibold text-slate-700 mb-1">Tanggal Transaksi *</label>
+                                            <input 
+                                                type="date" 
+                                                required
+                                                value={trxForm.date}
+                                                onChange={(e) => setTrxForm({ ...trxForm, date: e.target.value })}
+                                                class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 font-medium text-slate-800"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label class="block font-semibold text-slate-700 mb-1">Jenis Transaksi *</label>
+                                            <select 
+                                                value={trxForm.type}
+                                                onChange={(e) => {
+                                                    const newType = e.target.value;
+                                                    setTrxForm({ 
+                                                        ...trxForm, 
+                                                        type: newType,
+                                                        category: categories[newType][0] || ''
+                                                    });
+                                                }}
+                                                class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 font-semibold text-slate-800">
+                                                <option value="PEMASUKAN">PEMASUKAN (+)</option>
+                                                <option value="PENGELUARAN">PENGELUARAN (-)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block font-semibold text-slate-700 mb-1">Jenis Dana *</label>
+                                            <select 
+                                                value={trxForm.fundType}
+                                                disabled={currentRole === 'PENGURUS'}
+                                                onChange={(e) => setTrxForm({ ...trxForm, fundType: e.target.value })}
+                                                class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 font-semibold text-slate-800">
+                                                <option value="UMUM">Dana Umum</option>
+                                                <option value="HIBAH">Dana Hibah</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label class="block font-semibold text-slate-700 mb-1">Kategori Transaksi *</label>
+                                            <select 
+                                                value={trxForm.category}
+                                                onChange={(e) => setTrxForm({ ...trxForm, category: e.target.value })}
+                                                class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 font-medium text-slate-800">
+                                                {categories[trxForm.type].map((cat, idx) => (
+                                                    <option key={idx} value={cat}>{cat}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block font-semibold text-slate-700 mb-1">Nominal (Rupiah) *</label>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-2.5 font-bold text-slate-400">Rp</span>
+                                            <input 
+                                                type="number" 
+                                                required
+                                                min="1"
+                                                placeholder="Contoh: 1500000"
+                                                value={trxForm.amount}
+                                                onChange={(e) => setTrxForm({ ...trxForm, amount: e.target.value })}
+                                                class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2.5 font-extrabold text-sm text-slate-900 focus:ring-indigo-500"
+                                            />
+                                        </div>
+                                        <p class="text-[10px] text-slate-400 mt-1">Terbilang format: {formatRp(trxForm.amount)}</p>
+                                    </div>
+
+                                    <div>
+                                        <label class="block font-semibold text-slate-700 mb-1">Keterangan Sumber / Tujuan Penggunaan *</label>
+                                        <textarea 
+                                            rows="3"
+                                            required
+                                            placeholder="Jelaskan secara rinci sumber atau peruntukan transaksi ini..."
+                                            value={trxForm.description}
+                                            onChange={(e) => setTrxForm({ ...trxForm, description: e.target.value })}
+                                            class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-800"
+                                        ></textarea>
+                                    </div>
+
+                                    <div>
+                                        <label class="block font-semibold text-slate-700 mb-1">Tautan Bukti Transaksi (Google Drive / Nota PDF)</label>
+                                        <input 
+                                            type="url" 
+                                            placeholder="https://drive.google.com/file/d/..."
+                                            value={trxForm.proofUrl}
+                                            onChange={(e) => setTrxForm({ ...trxForm, proofUrl: e.target.value })}
+                                            class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-800"
+                                        />
+                                    </div>
+
+                                    <div class="pt-3 flex justify-end space-x-2 border-t border-slate-100">
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setIsTrxModalOpen(false)}
+                                            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold">
+                                            Batal
+                                        </button>
+                                        <button 
+                                            type="submit" 
+                                            class={`px-5 py-2 text-white font-bold rounded-xl shadow transition ${trxForm.fundType === 'UMUM' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-amber-600 hover:bg-amber-700'}`}>
+                                            {editingTrx ? 'Simpan Perubahan' : 'Simpan Transaksi'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MODAL EDIT HIBAH ALLOCATION */}
+                    {isHibahModalOpen && (
+                        <div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+                            <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100">
+                                <div class="p-5 bg-amber-600 text-white flex items-center justify-between">
+                                    <h3 class="font-bold text-base">Pengaturan Alokasi Dana Hibah</h3>
+                                    <button onClick={() => setIsHibahModalOpen(false)} class="text-white/80 hover:text-white">
+                                        <i class="fa-solid fa-xmark text-xl"></i>
+                                    </button>
+                                </div>
+                                <form 
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        logAction('UPDATE_ALOKASI', `Mengubah alokasi hibah ${hibahAllocation.programName} menjadi ${formatRp(hibahAllocation.totalAllocation)}`);
+                                        setIsHibahModalOpen(false);
+                                        showToast('Alokasi Dana Hibah berhasil diperbarui!');
+                                    }} 
+                                    class="p-6 space-y-4 text-xs">
+                                    <div>
+                                        <label class="block font-semibold text-slate-700 mb-1">Nama Program Hibah</label>
+                                        <input 
+                                            type="text" 
+                                            required
+                                            value={hibahAllocation.programName}
+                                            onChange={(e) => setHibahAllocation({ ...hibahAllocation, programName: e.target.value })}
+                                            class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 font-medium"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="block font-semibold text-slate-700 mb-1">Total Plafond / Alokasi Anggaran (Rp)</label>
+                                        <input 
+                                            type="number" 
+                                            required
+                                            value={hibahAllocation.totalAllocation}
+                                            onChange={(e) => setHibahAllocation({ ...hibahAllocation, totalAllocation: Number(e.target.value) })}
+                                            class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 font-bold text-slate-900"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="block font-semibold text-slate-700 mb-1">Nama Lembaga Donor / Penyedia</label>
+                                        <input 
+                                            type="text" 
+                                            value={hibahAllocation.donorName}
+                                            onChange={(e) => setHibahAllocation({ ...hibahAllocation, donorName: e.target.value })}
+                                            class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 font-medium"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="block font-semibold text-slate-700 mb-1">Catatan & Ketentuan Hibah</label>
+                                        <textarea 
+                                            rows="2"
+                                            value={hibahAllocation.notes}
+                                            onChange={(e) => setHibahAllocation({ ...hibahAllocation, notes: e.target.value })}
+                                            class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs"
+                                        ></textarea>
+                                    </div>
+                                    <div class="pt-3 flex justify-end space-x-2 border-t border-slate-100">
+                                        <button type="button" onClick={() => setIsHibahModalOpen(false)} class="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-semibold">Batal</button>
+                                        <button type="submit" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow">Simpan Alokasi</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                </div>
+            );
+        }
+
+        // Render Application
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
