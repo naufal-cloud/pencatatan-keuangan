@@ -38,6 +38,22 @@
 
         const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzfFmpVu1Ffs-ZgC1zk8aBz0whBbHwDjzkaHjvWXNuvIySC2A9_eDU0Us1qczrPeAZk/exec";
 
+        // Helper untuk kirim data ke Google Sheets secara background
+const syncToGoogleSheets = async (action, payload = {}) => {
+  if (!APPS_SCRIPT_URL) return;
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, ...payload })
+    });
+    console.log(`[Google Sheets] Berhasil kirim aksi: ${action}`);
+  } catch (error) {
+    console.error("[Google Sheets] Gagal kirim data:", error);
+  }
+};
+
         // Mock Initial Data for First Run
         const INITIAL_TRANSACTIONS = [
             { id: 'TRX-20261001-001', date: '2026-10-01', type: 'PEMASUKAN', fundType: 'UMUM', category: 'Iuran Member', amount: 15000000, description: 'Penerimaan Iuran Bulanan Anggota Oktober 2026', proofUrl: 'https://drive.google.com/file/d/sample-iuran/view', createdBy: 'Bendum', createdAt: '2026-10-01 09:00:00', syncStatus: 'SYNCED' },
@@ -330,6 +346,7 @@
                         return t;
                     });
                     setTransactions(updated);
+                    syncToGoogleSheets("UPDATE", trxForm);
                     logAction('EDIT_TRANSAKSI', `Mengubah transaksi ${editingTrx.id} (Nominal: ${formatRp(trxForm.amount)})`);
                     showToast(`Transaksi ${editingTrx.id} berhasil diperbarui.`);
                 } else {
@@ -352,6 +369,7 @@
                         syncStatus: 'PENDING'
                     };
                     setTransactions([newTrx, ...transactions]);
+                    syncToGoogleSheets("CREATE", newTrx);
                     logAction('TAMBAH_TRANSAKSI', `Membuat transaksi baru ${newId} (${trxForm.type} ${formatRp(trxForm.amount)} - ${trxForm.fundType})`);
                     showToast(`Transaksi ${newId} berhasil ditambahkan!`);
 
@@ -374,6 +392,7 @@
                 if (confirm(`Apakah Anda yakin ingin menghapus transaksi ${id}? Tindakan ini akan dicatat dalam Log Audit.`)) {
                     const target = transactions.find(t => t.id === id);
                     setTransactions(transactions.filter(t => t.id !== id));
+                    syncToGoogleSheets("DELETE", { id: id });
                     logAction('HAPUS_TRANSAKSI', `Menghapus transaksi ${id} (${target?.description || ''} - ${formatRp(target?.amount)})`);
                     showToast(`Transaksi ${id} telah dihapus.`);
                 }
@@ -387,6 +406,7 @@
                     setGsheetsConfig(prev => ({ ...prev, lastSynced: now, status: 'Tersinkronisasi' }));
                     setIsSyncing(false);
                     logAction('SINKRONISASI_GSHEETS', `Manual Sinkronisasi Google Sheets selesai (${transactions.length} transaksi)`);
+                    syncToGoogleSheets("BULK_SYNC", { items: transactions });
                     showToast('Sinkronisasi data ke Google Sheets berhasil dipermbarui!');
                 }, 1500);
             };
