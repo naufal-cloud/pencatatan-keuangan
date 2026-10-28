@@ -228,16 +228,21 @@ const syncToGoogleSheets = async (action, payload = {}) => {
       }
     }, err => console.error("Error Firestore Hibah:", err));
 
-    // 3. Ambil Data Audit Logs Real-time
+// 3. Ambil Data Audit Logs Real-time
     const unsubLogs = db.collection('logs').onSnapshot(snapshot => {
       const data = snapshot.docs.map(doc => {
         const d = doc.data();
-        const emailUser = d.user || d.pengguna || 'Anonim';
+        const emailUser = d.user || d.pengguna || d.email || 'Anonim';
         const roleUser = d.role || d.peran || 'ADMIN';
+        const userFormatted = `${emailUser} (${roleUser})`;
+
         return {
           id: doc.id,
           timestamp: d.timestamp || d.waktu || new Date().toLocaleString('id-ID'),
-          user: `${emailUser} (${roleUser})`,
+          user: userFormatted,
+          pengguna: userFormatted,
+          userRole: userFormatted,
+          role: roleUser,
           action: d.action || d.jenisAksi || 'LOG',
           details: d.details || d.rincian || '-'
         };
