@@ -240,8 +240,6 @@ const syncToGoogleSheets = async (action, payload = {}) => {
       unsubLogs();
     };
   }, [currentUser]);
-                return saved ? JSON.parse(saved) : [];
-            });
 
             // UI State
             const [currentRole, setCurrentRole] = useState('BENDUM'); // 'BENDUM' | 'PENGURUS' | 'ADMIN'
