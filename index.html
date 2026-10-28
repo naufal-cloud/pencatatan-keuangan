@@ -230,7 +230,18 @@ const syncToGoogleSheets = async (action, payload = {}) => {
 
     // 3. Ambil Data Audit Logs Real-time
     const unsubLogs = db.collection('logs').onSnapshot(snapshot => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const data = snapshot.docs.map(doc => {
+        const d = doc.data();
+        const emailUser = d.user || d.pengguna || 'Anonim';
+        const roleUser = d.role || d.peran || 'ADMIN';
+        return {
+          id: doc.id,
+          timestamp: d.timestamp || d.waktu || new Date().toLocaleString('id-ID'),
+          user: `${emailUser} (${roleUser})`,
+          action: d.action || d.jenisAksi || 'LOG',
+          details: d.details || d.rincian || '-'
+        };
+      });
       setAuditLogs(data);
     }, err => console.error("Error Firestore Logs:", err));
 
@@ -462,6 +473,7 @@ const handleSaveTrx = async (e) => {
           action: 'EDIT_TRANSAKSI',
           details: `Mengedit transaksi: ${trxForm.description}`,
           user: currentUser?.email || 'Anonim',
+          role: currentRole || 'ADMIN',
           timestamp: new Date().toISOString()
         });
 
@@ -479,6 +491,7 @@ const handleSaveTrx = async (e) => {
           action: 'TAMBAH_TRANSAKSI',
           details: `Menambahkan transaksi ${trxForm.description} sebesar Rp ${Number(trxForm.amount).toLocaleString('id-ID')}`,
           user: currentUser?.email || 'Anonim',
+          role: currentRole || 'ADMIN',
           timestamp: new Date().toISOString()
         });
 
