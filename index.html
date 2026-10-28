@@ -492,48 +492,7 @@ const handleSaveTrx = async (e) => {
       showToast('Gagal menyimpan transaksi ke database!', 'error');
     }
   };
-                        }
-                        return t;
-                    });
-                    setTransactions(updated);
-                    syncToGoogleSheets("UPDATE", trxForm);
-                    logAction('EDIT_TRANSAKSI', `Mengubah transaksi ${editingTrx.id} (Nominal: ${formatRp(trxForm.amount)})`);
-                    showToast(`Transaksi ${editingTrx.id} berhasil diperbarui.`);
-                } else {
-                    // New Transaction
-                    const dateStr = trxForm.date.replace(/-/g, '');
-                    const randomNum = Math.floor(100 + Math.random() * 900);
-                    const newId = `TRX-${dateStr}-${randomNum}`;
-                    
-                    const newTrx = {
-                        id: newId,
-                        date: trxForm.date,
-                        type: trxForm.type,
-                        fundType: trxForm.fundType,
-                        category: trxForm.category || (trxForm.type === 'PEMASUKAN' ? categories.PEMASUKAN[0] : categories.PENGELUARAN[0]),
-                        amount: Number(trxForm.amount),
-                        description: trxForm.description,
-                        proofUrl: trxForm.proofUrl,
-                        createdBy: currentRole,
-                        createdAt: new Date().toLocaleString('sv-SE').replace('T', ' '),
-                        syncStatus: 'PENDING'
-                    };
-                    setTransactions([newTrx, ...transactions]);
-                    syncToGoogleSheets("CREATE", newTrx);
-                    logAction('TAMBAH_TRANSAKSI', `Membuat transaksi baru ${newId} (${trxForm.type} ${formatRp(trxForm.amount)} - ${trxForm.fundType})`);
-                    showToast(`Transaksi ${newId} berhasil ditambahkan!`);
-
-                    // Check budget warning for hibah
-                    if (trxForm.fundType === 'HIBAH' && trxForm.type === 'PENGELUARAN') {
-                        const newTotalHibahExp = metrics.hibahExpense + Number(trxForm.amount);
-                        if (newTotalHibahExp > hibahAllocation.totalAllocation) {
-                            showToast(`PERINGATAN: Total pengeluaran Dana Hibah telah melebihi alokasi! (${formatRp(newTotalHibahExp)} / ${formatRp(hibahAllocation.totalAllocation)})`, 'error');
-                        }
-                    }
-                }
-                setIsTrxModalOpen(false);
-            };
-
+                     
             const handleDeleteTrx = async (id) => {
     if (currentRole !== 'BENDUM' && currentRole !== 'ADMIN') {
       showToast('Hanya Bendahara Umum atau Administrator yang dapat menghapus transaksi.', 'error');
