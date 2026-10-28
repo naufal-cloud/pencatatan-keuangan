@@ -431,34 +431,69 @@ const syncToGoogleSheets = async (action, payload = {}) => {
                 setIsTrxModalOpen(true);
             };
 
-            const handleSaveTrx = (e) => {
-                e.preventDefault();
-                if (!trxForm.amount || Number(trxForm.amount) <= 0) {
-                    showToast('Nominal transaksi harus lebih besar dari 0!', 'error');
-                    return;
-                }
-                if (!trxForm.description.trim()) {
-                    showToast('Keterangan transaksi wajib diisi!', 'error');
-                    return;
-                }
+const handleSaveTrx = async (e) => {
+    e.preventDefault();
+    if (!trxForm.amount || Number(trxForm.amount) <= 0) {
+      showToast('Nominal transaksi harus lebih besar dari 0!', 'error');
+      return;
+    }
+    if (!trxForm.description.trim()) {
+      showToast('Keterangan transaksi wajib diisi!', 'error');
+      return;
+    }
 
-                if (editingTrx) {
-                    // Update Transaction
-                    const updated = transactions.map(t => {
-                        if (t.id === editingTrx.id) {
-                            return {
-                                ...t,
-                                date: trxForm.date,
-                                type: trxForm.type,
-                                fundType: trxForm.fundType,
-                                category: trxForm.category,
-                                amount: Number(trxForm.amount),
-                                description: trxForm.description,
-                                proofUrl: trxForm.proofUrl,
-                                updatedBy: currentRole,
-                                updatedAt: new Date().toLocaleString('sv-SE').replace('T', ' '),
-                                syncStatus: 'PENDING'
-                            };
+    try {
+      const payload = {
+        date: trxForm.date,
+        type: trxForm.type,
+        fundType: trxForm.fundType,
+        category: trxForm.category,
+        amount: Number(trxForm.amount),
+        description: trxForm.description.trim(),
+        proofUrl: trxForm.proofUrl || '',
+        updatedAt: new Date().toISOString(),
+        updatedBy: currentUser?.email || 'Anonim'
+      };
+
+      if (editingTrx) {
+        // Edit transaksi yang sudah ada di Firestore
+        await db.collection('transactions').doc(editingTrx.id).update(payload);
+
+        // Catat Audit Log
+        await db.collection('logs').add({
+          action: 'EDIT_TRANSAKSI',
+          details: `Mengedit transaksi: ${trxForm.description}`,
+          user: currentUser?.email || 'Anonim',
+          timestamp: new Date().toISOString()
+        });
+
+        showToast('Transaksi berhasil diperbarui di Cloud!');
+      } else {
+        // Tambah transaksi baru ke Firestore
+        await db.collection('transactions').add({
+          ...payload,
+          createdAt: new Date().toISOString(),
+          createdBy: currentUser?.email || 'Anonim'
+        });
+
+        // Catat Audit Log
+        await db.collection('logs').add({
+          action: 'TAMBAH_TRANSAKSI',
+          details: `Menambahkan transaksi ${trxForm.description} sebesar Rp ${Number(trxForm.amount).toLocaleString('id-ID')}`,
+          user: currentUser?.email || 'Anonim',
+          timestamp: new Date().toISOString()
+        });
+
+        showToast('Transaksi berhasil disimpan ke Cloud!');
+      }
+
+      setIsTrxModalOpen(false);
+      setEditingTrx(null);
+    } catch (error) {
+      console.error('Error Firestore:', error);
+      showToast('Gagal menyimpan transaksi ke database!', 'error');
+    }
+  };
                         }
                         return t;
                     });
