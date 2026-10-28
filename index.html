@@ -33,10 +33,30 @@
 <body class="bg-slate-100 text-slate-800 antialiased min-h-screen">
     <div id="root"></div>
 
+    <!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
         const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzfFmpVu1Ffs-ZgC1zk8aBz0whBbHwDjzkaHjvWXNuvIySC2A9_eDU0Us1qczrPeAZk/exec";
+
+        // Konfigurasi Firebase Proyek Anda
+const firebaseConfig = {
+  apiKey: "AIzaSyClDoauKNpuGUH4KciRWfJgQDN3v3RaKR8",
+  authDomain: "pencatatan-keuangan-a2f37.firebaseapp.com",
+  projectId: "pencatatan-keuangan-a2f37",
+  storageBucket: "pencatatan-keuangan-a2f37.firebasestorage.app",
+  messagingSenderId: "188372362896",
+  appId: "1:188372362896:web:530dc251d15f196d795a15",
+  measurementId: "G-W81YTMCNG2"
+};
+
+// Inisialisasi Firebase & Auth
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+const auth = firebase.auth();
 
         // Helper untuk kirim data ke Google Sheets secara background
 const syncToGoogleSheets = async (action, payload = {}) => {
