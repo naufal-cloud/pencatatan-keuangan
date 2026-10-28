@@ -127,6 +127,49 @@ const syncToGoogleSheets = async (action, payload = {}) => {
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
+            // State untuk menyimpan daftar Peran berdasarkan Email
+  const [userRoles, setUserRoles] = useState(() => {
+    const saved = localStorage.getItem('rekonsiliasi_user_roles_v1');
+    return saved ? JSON.parse(saved) : {
+      'naufal.darmarafif@uhamka.ac.id': 'ADMIN' // Email Anda otomatis jadi ADMIN pertama
+    };
+  });
+
+  // State Modal Kelola User
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [newRole, setNewRole] = useState('PENGURUS');
+
+  // Simpan data peran ke LocalStorage
+  useEffect(() => {
+    localStorage.setItem('rekonsiliasi_user_roles_v1', JSON.stringify(userRoles));
+  }, [userRoles]);
+
+  // Otomatis tentukan currentRole berdasarkan email pengguna yang sedang login
+  useEffect(() => {
+    if (currentUser && currentUser.email) {
+      const emailKey = currentUser.email.toLowerCase();
+      const assignedRole = userRoles[emailKey] || 'PENGURUS'; // Default jika belum diatur = PENGURUS
+      setCurrentRole(assignedRole);
+    }
+  }, [currentUser, userRoles]);
+
+  // Fungsi Admin untuk menambah / mengubah peran user
+  const handleSaveUserRole = (e) => {
+    e.preventDefault();
+    if (!newEmail) return;
+    
+    const emailKey = newEmail.trim().toLowerCase();
+    setUserRoles(prev => ({
+      ...prev,
+      [emailKey]: newRole
+    }));
+
+    showToast(`Peran untuk ${emailKey} berhasil diatur ke ${newRole}`);
+    setNewEmail('');
+    setIsUserModalOpen(false);
+  };
+
   // Pantau status login dari Firebase
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -598,30 +641,27 @@ const syncToGoogleSheets = async (action, payload = {}) => {
                                     </div>
                                 </div>
 
-                                {/* User Role Switcher (Section 2 & 11.6) */}
-                                <div class="flex items-center space-x-3 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
-                                    <span class="text-xs text-slate-400 font-medium hidden sm:inline"><i class="fa-solid fa-user-shield mr-1"></i> Peran Aktif:</span>
-                                    <div class="flex bg-slate-900 rounded-lg p-0.5 text-xs font-semibold">
-                                        <button 
-                                            onClick={() => { setCurrentRole('BENDUM'); showToast('Beralih ke hak akses Bendahara Umum (Akses Penuh)'); }}
-                                            class={`px-3 py-1.5 rounded-md transition ${currentRole === 'BENDUM' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
-                                            Bendum
-                                        </button>
-                                        <button 
-                                            onClick={() => { 
-                                                setCurrentRole('PENGURUS'); 
-                                                if (activeTab === 'hibah' || activeTab === 'logs') setActiveTab('dashboard');
-                                                showToast('Beralih ke hak akses Pengurus Lain (Terbatas Dana Umum)', 'error'); 
-                                            }}
-                                            class={`px-3 py-1.5 rounded-md transition ${currentRole === 'PENGURUS' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
-                                            Pengurus
-                                        </button>
-                                        <button 
-                                            onClick={() => { setCurrentRole('ADMIN'); showToast('Beralih ke hak akses Administrator'); }}
-                                            class={`px-3 py-1.5 rounded-md transition ${currentRole === 'ADMIN' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
-                                            Admin
-                                        </button>
-                                    </div>
+                                {/* Display Peran User & Tombol Kelola (Khusus Admin) */}
+    <div className="flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
+      <span className="text-xs text-slate-400 font-medium">Peran Anda:</span>
+      <span className={`text-xs px-2.5 py-1 rounded-md font-bold text-white shadow ${
+        currentRole === 'ADMIN' ? 'bg-emerald-600' : 
+        currentRole === 'BENDUM' ? 'bg-indigo-600' : 'bg-amber-600'
+      }`}>
+        {currentRole === 'BENDUM' ? 'Bendahara Umum' : currentRole}
+      </span>
+
+      {/* Tombol Kelola User hanya muncul jika akun yang login adalah ADMIN */}
+      {currentRole === 'ADMIN' && (
+        <button
+          onClick={() => setIsUserModalOpen(true)}
+          className="ml-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-2.5 py-1 rounded-md transition flex items-center gap-1 font-medium"
+          title="Kelola Peran User"
+        >
+          <i className="fa-solid fa-users-gear text-xs"></i> Kelola User
+        </button>
+      )}
+    </div>
                                     {/* Info Email & Tombol Keluar */}
 <div className="flex items-center space-x-3 ml-auto">
   <span className="text-xs text-slate-300 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
@@ -1607,6 +1647,78 @@ const syncToGoogleSheets = async (action, payload = {}) => {
                             </div>
                         </div>
                     )}
+            {/* Modal Kelola Peran User (Khusus Admin) */}
+      {isUserModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <i className="fa-solid fa-user-shield text-indigo-400"></i> Kelola Peran Pengguna
+              </h3>
+              <button 
+                onClick={() => setIsUserModalOpen(false)}
+                className="text-slate-400 hover:text-white text-sm"
+              >
+                <i className="fa-solid fa-xmark text-lg"></i>
+              </button>
+            </div>
+
+            {/* Form Tambah/Edit Peran */}
+            <form onSubmit={handleSaveUserRole} className="space-y-4 mb-6">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Email Pengguna</label>
+                <input 
+                  type="email" 
+                  required
+                  placeholder="contoh: user@organisasi.com"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Pilih Peran</label>
+                <select 
+                  value={newRole}
+                  onChange={(e) => setNewRole(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm outline-none focus:border-indigo-500"
+                >
+                  <option value="PENGURUS">Pengurus (Hanya Pembukuan Umum)</option>
+                  <option value="BENDUM">Bendahara Umum (Akses Penuh Keuangan & Hibah)</option>
+                  <option value="ADMIN">Admin (Akses Penuh + Kelola User)</option>
+                </select>
+              </div>
+
+              <button 
+                type="submit"
+                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2 rounded-xl text-sm transition"
+              >
+                Simpan / Update Peran
+              </button>
+            </form>
+
+            {/* Daftar Peran User Saat Ini */}
+            <div className="border-t border-slate-700 pt-4">
+              <h4 className="text-xs font-semibold text-slate-400 uppercase mb-3">Daftar Peran Terdaftar</h4>
+              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                {Object.entries(userRoles).map(([email, role]) => (
+                  <div key={email} className="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-lg border border-slate-700/50 text-xs">
+                    <span className="text-slate-200 truncate max-w-[200px]">{email}</span>
+                    <span className={`px-2 py-0.5 rounded font-semibold text-[10px] ${
+                      role === 'ADMIN' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                      role === 'BENDUM' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' :
+                      'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                    }`}>
+                      {role}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
                 </div>
             );
