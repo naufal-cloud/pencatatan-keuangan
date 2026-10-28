@@ -198,29 +198,48 @@ const syncToGoogleSheets = async (action, payload = {}) => {
   const handleLogout = () => {
     auth.signOut();
   };
-            // Persistent State (LocalStorage)
-            const [transactions, setTransactions] = useState(() => {
-                const saved = localStorage.getItem('rekonsiliasi_trx_v1');
-                return saved ? JSON.parse(saved) : [];
-            });
+// Persistent State (Firestore Cloud & Local)
+  const [transactions, setTransactions] = useState([]);
+  const [categories, setCategories] = useState(() => {
+    const saved = localStorage.getItem('rekonsiliasi_cat_v1');
+    return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
+  });
+  const [hibahAllocation, setHibahAllocation] = useState({ totalAllocation: 0, notes: '' });
+  const [gsheetsConfig, setGsheetsConfig] = useState(() => {
+    const saved = localStorage.getItem('rekonsiliasi_gsheets_v1');
+    return saved ? JSON.parse(saved) : INITIAL_GSHEETS_CONFIG;
+  });
+  const [auditLogs, setAuditLogs] = useState([]);
 
-            const [categories, setCategories] = useState(() => {
-                const saved = localStorage.getItem('rekonsiliasi_cat_v1');
-                return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
-            });
+  // Sinkronisasi Real-time dengan Firebase Firestore
+  useEffect(() => {
+    if (!currentUser) return;
 
-            const [hibahAllocation, setHibahAllocation] = useState(() => {
-                const saved = localStorage.getItem('rekonsiliasi_hibah_v1');
-                return saved ? JSON.parse(saved) : { totalAllocation: 0, notes: '' };
-            });
+    // 1. Ambil Data Transaksi Real-time
+    const unsubTrx = db.collection('transactions').onSnapshot(snapshot => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setTransactions(data);
+    }, err => console.error("Error Firestore Trx:", err));
 
-            const [gsheetsConfig, setGsheetsConfig] = useState(() => {
-                const saved = localStorage.getItem('rekonsiliasi_gsheets_v1');
-                return saved ? JSON.parse(saved) : INITIAL_GSHEETS_CONFIG;
-            });
+    // 2. Ambil Data Alokasi Hibah Real-time
+    const unsubHibah = db.collection('settings').doc('hibah').onSnapshot(doc => {
+      if (doc.exists) {
+        setHibahAllocation(doc.data());
+      }
+    }, err => console.error("Error Firestore Hibah:", err));
 
-            const [auditLogs, setAuditLogs] = useState(() => {
-                const saved = localStorage.getItem('rekonsiliasi_logs_v1');
+    // 3. Ambil Data Audit Logs Real-time
+    const unsubLogs = db.collection('logs').onSnapshot(snapshot => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setAuditLogs(data);
+    }, err => console.error("Error Firestore Logs:", err));
+
+    return () => {
+      unsubTrx();
+      unsubHibah();
+      unsubLogs();
+    };
+  }, [currentUser]);
                 return saved ? JSON.parse(saved) : [];
             });
 
