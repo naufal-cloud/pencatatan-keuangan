@@ -627,60 +627,7 @@ const syncToGoogleSheets = async (action, payload = {}) => {
 
             return (
                 <div class="min-h-screen flex flex-col">
-                    {/* Top Navigation Bar */}
-                    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-30 no-print">
-                        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                            <div class="flex items-center justify-between h-16">
-                                <div class="flex items-center space-x-3">
-                                    <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-xl text-white shadow">
-                                        <i class="fa-solid fa-scale-balanced"></i>
-                                    </div>
-                                    <div>
-                                        <h1 class="font-bold text-lg tracking-wide leading-tight">Website Keuangan & Rekonsiliasi</h1>
-                                        <p class="text-xs text-slate-400">Pengelolaan Dana Umum & Dana Hibah v1.0</p>
-                                    </div>
-                                </div>
-
-                                {/* Display Peran User & Tombol Kelola (Khusus Admin) */}
-    <div className="flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
-      <span className="text-xs text-slate-400 font-medium">Peran Anda:</span>
-      <span className={`text-xs px-2.5 py-1 rounded-md font-bold text-white shadow ${
-        currentRole === 'ADMIN' ? 'bg-emerald-600' : 
-        currentRole === 'BENDUM' ? 'bg-indigo-600' : 'bg-amber-600'
-      }`}>
-        {currentRole === 'BENDUM' ? 'Bendahara Umum' : currentRole}
-      </span>
-
-      {/* Tombol Kelola User hanya muncul jika akun yang login adalah ADMIN */}
-      {currentRole === 'ADMIN' && (
-        <button
-          onClick={() => setIsUserModalOpen(true)}
-          className="ml-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-2.5 py-1 rounded-md transition flex items-center gap-1 font-medium"
-          title="Kelola Peran User"
-        >
-          <i className="fa-solid fa-users-gear text-xs"></i> Kelola User
-        </button>
-      )}
-    </div>
-                                    {/* Info Email & Tombol Keluar */}
-<div className="flex items-center space-x-3 ml-auto">
-  <span className="text-xs text-slate-300 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
-    <i className="fa-solid fa-user mr-1.5 text-indigo-400"></i> {currentUser?.email}
-  </span>
-  <button 
-    onClick={handleLogout}
-    className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-xs px-3 py-1.5 rounded-lg transition font-medium"
-  >
-    Keluar
-  </button>
-</div>
-                            
-                            </div>
-                        </div>
-
-                    </header>
-
-                        {/* Top Navigation Bar */}
+{/* Top Navigation Bar */}
     <header className="bg-slate-900 text-white shadow-lg sticky top-0 z-30 no-print">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
