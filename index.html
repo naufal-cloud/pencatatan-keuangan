@@ -199,7 +199,7 @@ const syncToGoogleSheets = async (action, payload = {}) => {
             // Persistent State (LocalStorage)
             const [transactions, setTransactions] = useState(() => {
                 const saved = localStorage.getItem('rekonsiliasi_trx_v1');
-                return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
+                return saved ? JSON.parse(saved) : [];
             });
 
             const [categories, setCategories] = useState(() => {
@@ -209,7 +209,7 @@ const syncToGoogleSheets = async (action, payload = {}) => {
 
             const [hibahAllocation, setHibahAllocation] = useState(() => {
                 const saved = localStorage.getItem('rekonsiliasi_hibah_v1');
-                return saved ? JSON.parse(saved) : INITIAL_HIBAH_ALLOCATION;
+                return saved ? JSON.parse(saved) : { totalAllocation: 0, notes: '' };
             });
 
             const [gsheetsConfig, setGsheetsConfig] = useState(() => {
@@ -219,7 +219,7 @@ const syncToGoogleSheets = async (action, payload = {}) => {
 
             const [auditLogs, setAuditLogs] = useState(() => {
                 const saved = localStorage.getItem('rekonsiliasi_logs_v1');
-                return saved ? JSON.parse(saved) : INITIAL_LOGS;
+                return saved ? JSON.parse(saved) : [];
             });
 
             // UI State
