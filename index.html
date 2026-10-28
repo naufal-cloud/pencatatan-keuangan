@@ -454,7 +454,7 @@ const handleSaveTrx = async (e) => {
       };
 
       if (editingTrx) {
-        // Edit transaksi yang sudah ada di Firestore
+        // Edit transaksi di Firestore Cloud
         await db.collection('transactions').doc(editingTrx.id).update(payload);
 
         // Catat Audit Log
@@ -467,7 +467,7 @@ const handleSaveTrx = async (e) => {
 
         showToast('Transaksi berhasil diperbarui di Cloud!');
       } else {
-        // Tambah transaksi baru ke Firestore
+        // Tambah transaksi baru di Firestore Cloud
         await db.collection('transactions').add({
           ...payload,
           createdAt: new Date().toISOString(),
