@@ -536,19 +536,30 @@ const handleSaveTrx = async (e) => {
                 setIsTrxModalOpen(false);
             };
 
-            const handleDeleteTrx = (id) => {
-                if (currentRole !== 'BENDUM' && currentRole !== 'ADMIN') {
-                    showToast('Hanya Bendahara Umum atau Administrator yang dapat menghapus transaksi.', 'error');
-                    return;
-                }
-                if (confirm(`Apakah Anda yakin ingin menghapus transaksi ${id}? Tindakan ini akan dicatat dalam Log Audit.`)) {
-                    const target = transactions.find(t => t.id === id);
-                    setTransactions(transactions.filter(t => t.id !== id));
-                    syncToGoogleSheets("DELETE", { id: id });
-                    logAction('HAPUS_TRANSAKSI', `Menghapus transaksi ${id} (${target?.description || ''} - ${formatRp(target?.amount)})`);
-                    showToast(`Transaksi ${id} telah dihapus.`);
-                }
-            };
+            const handleDeleteTrx = async (id) => {
+    if (currentRole !== 'BENDUM' && currentRole !== 'ADMIN') {
+      showToast('Hanya Bendahara Umum atau Administrator yang dapat menghapus transaksi.', 'error');
+      return;
+    }
+
+    if (confirm(`Apakah Anda yakin ingin menghapus transaksi ${id}? Tindakan ini akan dicatat dalam Log Audit.`)) {
+      try {
+        const target = transactions.find(t => t.id === id);
+
+        // Hapus dokumen dari Firestore Database
+        await db.collection('transactions').doc(id).delete();
+
+        // Kirim sinkronisasi dan catat Audit Log
+        syncToGoogleSheets("DELETE", { id: id });
+        logAction('HAPUS_TRANSAKSI', `Menghapus transaksi ${id} (${target?.description || ''} - ${formatRp(target?.amount)})`);
+        
+        showToast(`Transaksi ${id} berhasil dihapus dari Cloud.`);
+      } catch (error) {
+        console.error('Error Firestore Delete:', error);
+        showToast('Gagal menghapus transaksi dari database!', 'error');
+      }
+    }
+  };
 
             const handleManualSyncGSheets = () => {
                 setIsSyncing(true);
