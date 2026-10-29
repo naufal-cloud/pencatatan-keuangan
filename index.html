@@ -598,17 +598,33 @@ const handleSaveTrx = async (e) => {
                 showToast(`Kategori ${catName} dihapus.`);
             };
 
-            const handleResetData = () => {
-                if (confirm('Apakah Anda yakin ingin mengembalikan seluruh data ke kondisi awal (Initial Mock)?')) {
-                    localStorage.clear();
-                    setTransactions(INITIAL_TRANSACTIONS);
-                    setCategories(INITIAL_CATEGORIES);
-                    setHibahAllocation(INITIAL_HIBAH_ALLOCATION);
-                    setGsheetsConfig(INITIAL_GSHEETS_CONFIG);
-                    setAuditLogs(INITIAL_LOGS);
-                    showToast('Seluruh data berhasil di-reset!');
-                }
-            };
+            const handleResetData = async () => {
+  if (!window.confirm("Apakah Anda yakin ingin MENGHAPUS BERSIH seluruh data transaksi dan log di Cloud?")) {
+    return;
+  }
+
+  try {
+    // 1. Hapus semua transaksi di Firestore
+    const txSnapshot = await db.collection('transactions').get();
+    const batch = db.batch();
+    txSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+
+    // 2. Hapus semua log di Firestore
+    const logSnapshot = await db.collection('logs').get();
+    logSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+
+    // Eksekusi penghapusan massal
+    await batch.commit();
+
+    // Bersihkan penyimpan lokal
+    localStorage.clear();
+
+    showToast('Seluruh data di Cloud berhasil dihapus bersih!', 'success');
+  } catch (err) {
+    console.error("Gagal reset data Firestore:", err);
+    showToast('Gagal menghapus data dari Cloud!', 'error');
+  }
+};
 
             // Tampilkan Form Login jika pengguna belum masuk
   if (!currentUser) {
