@@ -147,26 +147,47 @@ const syncToGoogleSheets = async (action, payload = {}) => {
     localStorage.setItem('rekonsiliasi_user_roles_v1', JSON.stringify(userRoles));
   }, [userRoles]);
 
-  // Otomatis tentukan currentRole berdasarkan email pengguna yang sedang login
-  useEffect(() => {
-    if (currentUser && currentUser.email) {
-      const emailKey = currentUser.email.toLowerCase();
-      const assignedRole = userRoles[emailKey] || 'PENGURUS'; // Default jika belum diatur = PENGURUS
-      setCurrentRole(assignedRole);
+  // Otomatis tentukan dan sinkronkan currentRole dari Firestore Real-time
+useEffect(() => {
+  if (!currentUser || !currentUser.email) return;
+
+  const emailKey = currentUser.email.toLowerCase();
+
+  // Baca peran langsung dari Firestore agar tersinkron otomatis antar HP/Laptop
+  const unsubRole = db.collection('settings').doc('userRoles').onSnapshot(doc => {
+    if (doc.exists && doc.data()[emailKey]) {
+      setCurrentRole(doc.data()[emailKey]);
+    } else {
+      const assigned = userRoles[emailKey] || 'PENGURUS';
+      setCurrentRole(assigned);
     }
-  }, [currentUser, userRoles]);
+  }, () => {
+    setCurrentRole(userRoles[emailKey] || 'PENGURUS');
+  });
+
+  return () => unsubRole();
+}, [currentUser, userRoles]);
 
   // Fungsi Admin untuk menambah / mengubah peran user
-  const handleSaveUserRole = (e) => {
-    e.preventDefault();
-    if (!newEmail) return;
-    
-    const emailKey = newEmail.trim().toLowerCase();
-    setUserRoles(prev => ({
-      ...prev,
-      [emailKey]: newRole
-    }));
+const handleSaveUserRole = async (e) => {
+  e.preventDefault();
+  if (!newEmail) return;
 
+  const emailKey = newEmail.trim().toLowerCase();
+  const updatedRoles = { ...userRoles, [emailKey]: newRole };
+
+  setUserRoles(updatedRoles);
+
+  try {
+    // Simpan pembaruan peran ke Firestore Cloud
+    await db.collection('settings').doc('userRoles').set(updatedRoles, { merge: true });
+    showToast(`Peran untuk ${emailKey} berhasil diperbarui!`, 'success');
+    setNewEmail('');
+  } catch (err) {
+    console.error("Gagal simpan peran ke Cloud:", err);
+    showToast('Gagal memperbarui peran di Cloud!', 'error');
+  }
+};
     showToast(`Peran untuk ${emailKey} berhasil diatur ke ${newRole}`);
     setNewEmail('');
     setIsUserModalOpen(false);
