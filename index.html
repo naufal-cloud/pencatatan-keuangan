@@ -169,30 +169,26 @@ useEffect(() => {
 }, [currentUser, userRoles]);
 
   // Fungsi Admin untuk menambah / mengubah peran user
-const handleSaveUserRole = async (e) => {
-  e.preventDefault();
-  if (!newEmail) return;
+  const handleSaveUserRole = async (e) => {
+    e.preventDefault();
+    if (!newEmail) return;
 
-  const emailKey = newEmail.trim().toLowerCase();
-  const updatedRoles = { ...userRoles, [emailKey]: newRole };
+    const emailKey = newEmail.trim().toLowerCase();
+    const updatedRoles = { ...userRoles, [emailKey]: newRole };
 
-  setUserRoles(updatedRoles);
+    setUserRoles(updatedRoles);
 
-  try {
-    // Simpan pembaruan peran ke Firestore Cloud
-    await db.collection('settings').doc('userRoles').set(updatedRoles, { merge: true });
-    showToast(`Peran untuk ${emailKey} berhasil diperbarui!`, 'success');
-    setNewEmail('');
-  } catch (err) {
-    console.error("Gagal simpan peran ke Cloud:", err);
-    showToast('Gagal memperbarui peran di Cloud!', 'error');
-  }
-};
-    showToast(`Peran untuk ${emailKey} berhasil diatur ke ${newRole}`);
-    setNewEmail('');
-    setIsUserModalOpen(false);
+    try {
+      // Simpan pembaruan peran ke Firestore Cloud
+      await db.collection('settings').doc('userRoles').set(updatedRoles, { merge: true });
+      showToast(`Peran untuk ${emailKey} berhasil diperbarui!`, 'success');
+      setNewEmail('');
+      setIsUserModalOpen(false);
+    } catch (err) {
+      console.error("Gagal simpan peran ke Cloud:", err);
+      showToast('Gagal memperbarui peran di Cloud!', 'error');
+    }
   };
-
   // Pantau status login dari Firebase
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
